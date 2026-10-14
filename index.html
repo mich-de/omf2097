@@ -91,10 +91,13 @@
     -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
   }
   #pad { position: absolute; left: calc(env(safe-area-inset-left) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px); }
-  #esc { position: absolute; left: calc(env(safe-area-inset-left) + 10px); top: calc(env(safe-area-inset-top) + 10px); }
+  #sys {
+    position: absolute; left: calc(env(safe-area-inset-left) + 10px); top: calc(env(safe-area-inset-top) + 10px);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  }
   #fight {
     position: absolute; right: calc(env(safe-area-inset-right) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px);
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
   }
 
   /* NOVA tile: shown only on the robot selection screen. */
@@ -105,6 +108,28 @@
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
   #nova[hidden] { display: none; }
+  /* On touch screens it sits above KICK; in portrait there is no room there, so top right. */
+  #fight #nova { position: static; pointer-events: auto; }
+
+  /* Full screen toggle: under ESC on touch screens; on desktop top left, shown while the mouse moves. */
+  #fs {
+    position: fixed; z-index: 21;
+    top: calc(env(safe-area-inset-top) + 10px); left: calc(env(safe-area-inset-left) + 10px);
+    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    transition: opacity .3s;
+  }
+  #fs[hidden] { display: none; }
+  #fs.idle { opacity: 0; pointer-events: none; }
+  #fs:focus { outline: none; }
+  #fs canvas {
+    display: block; image-rendering: pixelated;
+    width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
+  }
+  #sys #fs { position: static; pointer-events: auto; }
+  @media (orientation: portrait) {
+    #fight #nova { position: fixed; top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px); }
+  }
   #nova:focus { outline: none; }
   #nova canvas {
     display: block; image-rendering: pixelated;
@@ -126,12 +151,13 @@
   </div>
 </main>
 <div id="jsdos"></div>
-<div id="touch" hidden aria-hidden="true">
-  <canvas id="esc"></canvas>
-  <canvas id="pad"></canvas>
-  <div id="fight"><canvas id="kick"></canvas><canvas id="punch"></canvas></div>
+<div id="touch" hidden>
+  <div id="sys"><canvas id="esc" aria-hidden="true"></canvas></div>
+  <canvas id="pad" aria-hidden="true"></canvas>
+  <div id="fight"><canvas id="kick" aria-hidden="true"></canvas><canvas id="punch" aria-hidden="true"></canvas></div>
 </div>
-<button id="nova" type="button" hidden aria-label="Play as Nova"><canvas aria-hidden="true"></canvas></button>
+<button id="nova" type="button" hidden aria-label="Play with Nova"><canvas aria-hidden="true"></canvas></button>
+<button id="fs" type="button" hidden aria-label="Full screen"><canvas aria-hidden="true"></canvas></button>
 
 <script>
 (() => {
@@ -460,6 +486,7 @@
     launcher.inert = true;
     if (touch) showTouch();
     watchForRobotScreen();
+    setupFullscreenButton();
   }
 
   // ---------- touch controls ----------
@@ -642,15 +669,19 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let novaBusy = false;
 
+  // One line on desktop; on touch it stacks "PLAY WITH NOVA" to fit the side band above KICK.
   function drawNova(busy) {
-    const label = "+ NOVA";
-    const w = textW(label) + 8, h = 14;
+    const lines = touch ? ["PLAY", "WITH", "NOVA"] : ["+ NOVA"];
+    const w = Math.max(...lines.map(textW)) + 8, h = lines.length * 10 + 4;
     const ctx = sizeCanvas(novaCv, w, h);
-    ctx.fillStyle = busy ? C.hot : C.text;
+    ctx.fillStyle = busy ? C.hot : touch ? C.label : C.text;
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = busy ? PRESSED_FILL : C.panel;
     ctx.fillRect(1, 1, w - 2, h - 2);
-    drawText(ctx, label, 4, 2, busy ? C.hot : C.label, C.ink);
+    lines.forEach((line, i) => {
+      const col = busy ? C.hot : line.includes("NOVA") ? C.label : C.body;
+      drawText(ctx, line, Math.floor((w - textW(line)) / 2), 2 + i * 10, col, C.ink);
+    });
   }
 
   // Slot under player 1's cursor (0-9), or -1 when this is not the robot screen:
@@ -718,8 +749,13 @@
   }
 
   function watchForRobotScreen() {
-    const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
-    novaBtn.style.setProperty("--t", t + "px");
+    if (touch) {
+      // Join the KICK/PUNCH column and take its pixel scale.
+      document.getElementById("fight").prepend(novaBtn);
+    } else {
+      const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
+      novaBtn.style.setProperty("--t", t + "px");
+    }
     drawNova(false);
     novaBtn.addEventListener("click", pickNova);
     // N picks Nova while the tile is up; elsewhere N still reaches the game (e.g. typing names).
@@ -741,6 +777,59 @@
       if (novaBusy || !gameCi) return;
       try { novaBtn.hidden = (await readCursor()) < 0; } catch { novaBtn.hidden = true; }
     }, 600);
+  }
+
+  // ---------- full screen ----------
+  const fsBtn = document.getElementById("fs");
+  const fsCv = fsBtn.querySelector("canvas");
+
+  // Four corner brackets: pointing out to enter full screen, pointing in to leave it.
+  function drawFs() {
+    const on = !!document.fullscreenElement;
+    const ctx = sizeCanvas(fsCv, 18, 14);
+    ctx.fillStyle = C.text;
+    ctx.fillRect(0, 0, 18, 14);
+    ctx.fillStyle = C.panel;
+    ctx.fillRect(1, 1, 16, 12);
+    ctx.fillStyle = C.body;
+    for (const [x, y, dx, dy] of [[4, 3, 1, 1], [13, 3, -1, 1], [4, 10, 1, -1], [13, 10, -1, -1]]) {
+      const cx = on ? x + 2 * dx : x, cy = on ? y + 2 * dy : y; // corner pixel of the bracket
+      for (let i = 0; i < 3; i++) {
+        ctx.fillRect(on ? cx - i * dx : cx + i * dx, cy, 1, 1);
+        ctx.fillRect(cx, on ? cy - i * dy : cy + i * dy, 1, 1);
+      }
+    }
+  }
+
+  function setupFullscreenButton() {
+    if (!document.fullscreenEnabled) return; // iPhone Safari: no element full screen
+    drawFs();
+    document.addEventListener("fullscreenchange", drawFs);
+    fsBtn.addEventListener("click", () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      } else {
+        document.documentElement.requestFullscreen({ navigationUI: "hide" })
+          .then(() => (touch ? screen.orientation?.lock?.("landscape") : undefined))
+          .catch(() => {});
+      }
+    });
+    if (touch) {
+      document.getElementById("sys").append(fsBtn);
+    } else {
+      const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
+      fsBtn.style.setProperty("--t", t + "px");
+      // Show it while the mouse moves, then get out of the way.
+      let idleTimer = 0;
+      const wake = () => {
+        fsBtn.classList.remove("idle");
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => fsBtn.classList.add("idle"), 2500);
+      };
+      addEventListener("mousemove", wake);
+      wake();
+    }
+    fsBtn.hidden = false;
   }
 
   const actions = {

@@ -26,9 +26,9 @@
 
 No install needed: open **https://mich-de.github.io/omf2097/**, pick **Regular Game** and wait for the ~15 MB download.
 
-- **Desktop:** the game fills the window. Arrow keys to move, `Enter` to punch, `Right Shift` to kick, `Esc` for the menu. `F11` for true full screen.
-- **Phone and tablet:** an on-screen pad appears with **PUNCH**, **KICK** and **ESC**. Starting the game asks for landscape full screen where the browser allows it (Android does, iPhone doesn't).
-- **Nova:** on the robot selection screen a **+ NOVA** tile appears (or press `N`). The page performs the original cheat for you and picks Nova.
+- **Desktop:** the game fills the window. Arrow keys to move, `Enter` to punch, `Right Shift` to kick, `Esc` for the menu. Move the mouse to show the full screen button (top left), or press `F11`.
+- **Phone and tablet:** an on-screen pad appears with **PUNCH**, **KICK**, **ESC** and a full screen button. Starting the game asks for landscape full screen where the browser allows it (Android does, iPhone doesn't).
+- **Nova:** on the robot selection screen of a one-player game, a **+ NOVA** tile (desktop, or press `N`) or a **PLAY WITH NOVA** button above KICK (phone) appears. The page performs the original cheat for you and picks Nova, with any pilot. In a two-player game player 2 still has to do the cheat by hand.
 - **Leaving:** pick **QUIT** in the game's main menu (`Esc` jumps to it) and the page goes back to the start screen.
 
 One Must Fall 2097 has been freeware since 1999. This repo is also the site: GitHub Pages serves it straight from the root.
