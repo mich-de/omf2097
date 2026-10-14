@@ -10,13 +10,13 @@
 ![DOSBox-X WebAssembly](https://img.shields.io/badge/DOSBox--X-WebAssembly-6e40c9?style=for-the-badge)
 ![Uscito nel 1994](https://img.shields.io/badge/uscito_nel-1994-c62828?style=for-the-badge)
 
-[![▶ GIOCA ONLINE](https://img.shields.io/badge/%E2%96%B6_GIOCA_ONLINE-mich--de.github.io%2F0mf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/0mf2097/)
+[![▶ GIOCA ONLINE](https://img.shields.io/badge/%E2%96%B6_GIOCA_ONLINE-mich--de.github.io%2Fomf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/omf2097/)
 
-**▶ [Giocalo subito nel browser → mich-de.github.io/0mf2097](https://mich-de.github.io/0mf2097/)**
+**▶ [Giocalo subito nel browser → mich-de.github.io/omf2097](https://mich-de.github.io/omf2097/)**
 
 <img src="screenshots/OK_hero_16-9.png" alt="Intro di One Must Fall 2097 a tutta finestra in Chrome" width="820">
 
-*Parte da solo, riempie qualsiasi finestra senza barre nere, nessuna interfaccia del player in mezzo.*
+*Desktop e mobile, un'unica pagina: parte da sola e riempie lo schermo.*
 
 </div>
 
@@ -24,26 +24,29 @@
 
 ## Gioca online
 
-Nessuna installazione: **https://mich-de.github.io/0mf2097/** — clicca **▶ GIOCA** e attendi il download di circa 15 MB.
-Il sito è servito da GitHub Pages dal repo pubblico [mich-de/0mf2097](https://github.com/mich-de/0mf2097), generato dalla cartella [`0mf2097/`](0mf2097/) con `git subtree split --prefix=0mf2097`.
+Nessuna installazione: apri **https://mich-de.github.io/omf2097/**, scegli **Regular Game** e attendi il download di circa 15 MB.
+
+- **Desktop:** il gioco riempie la finestra. Frecce per muoverti, `Invio` per il pugno, `Shift destro` per il calcio, `Esc` per il menu. `F11` per lo schermo intero vero.
+- **Telefono e tablet:** compaiono una croce direzionale e i tasti **PUNCH**, **KICK** ed **ESC**. All'avvio del gioco viene chiesto lo schermo intero in orizzontale dove il browser lo consente (Android sì, iPhone no).
+
+One Must Fall 2097 è freeware dal 1999. Questo repo è anche il sito: GitHub Pages lo serve direttamente dalla radice.
 
 ## Avvio rapido
 
 ```bash
 git clone https://github.com/mich-de/omf2097.git
 cd omf2097
-npm install
 python3 -m http.server 8734
 ```
 
-Apri **http://127.0.0.1:8734/browser_test.html**. Il gioco si avvia da solo e riempie la finestra. Premi `F11` per lo schermo intero vero: i browser lo permettono solo dopo un'azione dell'utente.
+Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` all'indirizzo per provare i comandi mobile da computer. `npm install` serve solo per gli strumenti Node qui sotto.
 
 ## In evidenza
 
-- **Zero clic.** `autoStart` di js-dos v8 salta la schermata con il tasto play, `kiosk` nasconde l'interfaccia del player.
-- **Qualsiasi formato di schermo.** `renderAspect: "Fit"` riempie la finestra da bordo a bordo, che sia 16:9, 16:10 o altro.
-- **Verificato in un browser vero.** Non solo nell'emulatore di Node: testato in Chrome, pilotato tramite il DevTools Protocol.
-- **Kit di test headless.** Avvia programmi DOS da Node, invia tasti, cattura ogni frame nuovo, modifica i file in memoria.
+- **Una pagina per desktop e mobile.** Sugli schermi touch compaiono croce e pulsanti; con la tastiera funziona e basta.
+- **Un launcher fatto con la grafica del gioco.** Sfondo, scritte e pannelli vengono dalle schermate NetArena del 1994 incluse nel gioco.
+- **Impostazioni ottimizzate.** Velocità di gioco al 50%, audio Gravis Ultrasound stereo, CPU emulata al massimo.
+- **Kit di test headless.** Avvia programmi DOS da Node, invia tasti, cattura ogni frame nuovo, modifica i file in memoria, pilota Chrome vero tramite il DevTools Protocol.
 
 ## Come è tornato in vita
 
@@ -52,32 +55,50 @@ Apri **http://127.0.0.1:8734/browser_test.html**. Il gioco si avvia da solo e ri
 3. **Dentro il launcher.** [REA](https://github.com/morluto/rea) con Ghidra 12.1.4 ha decompilato `OMF.EXE`, un launcher Turbo Pascal a 16 bit. Non contiene istruzioni di divisione che possano fallire in quel punto, e questo ha spostato l'indagine dal codice ai byte effettivamente caricati.
 4. **Da Node a un browser vero.** `cdp_shot.js` pilota Chrome headless tramite il DevTools Protocol con il `WebSocket` integrato in Node, senza Puppeteer: carica la pagina, clicca, aspetta, fa lo screenshot.
 5. **16:9 fatto bene.** `4/3` mantiene le proporzioni originali con bande nere ai lati. `16/9` riempie la finestra solo se è esattamente 16:9. `Fit` riempie sempre. Gli sfondi delle arene sono immagini fisse renderizzate nel 1994, quindi ai lati non c'è altro campo visivo da scoprire; per lo stesso motivo un remake del motore come OpenOMF non mostrerebbe più arena.
+6. **Un launcher nello stile del gioco.** La pagina usa `NETMEGA.PCX` come sfondo, disegna le scritte pixel per pixel con il font bitmap `NETFONT1.PCX` e i colori originali, e costruisce i pannelli informativi sulla griglia blu di `NETSET.PCX`. Resta visibile durante il testo di avvio di DOS e lascia il posto al gioco quando questo passa in grafica.
+7. **Comandi touch che parlano la lingua del gioco.** Croce e pulsanti inviano esattamente i tasti assegnati al giocatore 1 in `SETUP.CFG`: frecce più le diagonali del tastierino, `Invio` per il pugno, `Shift destro` per il calcio. Sugli schermi touch il gioco resta in 4:3, così i comandi stanno nelle bande laterali.
+8. **Impostazioni al meglio.** La velocità di gioco ora è al 50% di default (byte 0 di `SETUP.CFG`; al 100% era troppo veloce). L'audio è passato da un Sound Blaster mono che distorceva alla Gravis Ultrasound stereo, configurata con il `SETUP.EXE` originale del gioco. L'emulatore gira con `cycles=max`.
 
 ## Screenshot
 
 | | |
 |:---:|:---:|
+| <img src="screenshots/OK_launcher_desktop.png" width="400"><br>Launcher su desktop | <img src="screenshots/OK_mobile_touch.png" width="400"><br>Telefono: croce e pulsanti durante un combattimento |
 | <img src="screenshots/OK_title_2097.png" width="400"><br>Schermata del titolo, avvio headless in Node | <img src="screenshots/OK_browser_boot.png" width="400"><br>Player js-dos in Chrome |
 | <img src="screenshots/OK_pillarbox_16-9.png" width="400"><br>`renderAspect: "4/3"`: bande laterali, nessuna distorsione | <img src="screenshots/CONFRONTO_stretch_16-9.png" width="400"><br>`renderAspect: "16/9"`: immagine stirata |
 | <img src="screenshots/OK_fit_no_bars.png" width="400"><br>`renderAspect: "Fit"`: riempie sempre | |
+
+## Impostazioni di gioco
+
+| Impostazione | Valore | Dove |
+|---|---|---|
+| Velocità di gioco | 50% | Byte 0 di `SETUP.CFG` (`game_speed`, 0-10) |
+| Audio | Gravis Ultrasound, stereo (240 / IRQ 5 / DMA 3) | `SOUNDCRD.INF`, `MDRV003R.MUS`, `gus=true` in `dosbox.conf` |
+| CPU emulata | `cycles=max` | `dosbox.conf` e `jsdos.json` nel bundle |
+| Video | Ombre alte, animazioni, animazione della palette e scosse dello schermo attive | Valori predefiniti del gioco, già al massimo |
 
 ## Cosa c'è nel repo
 
 | Percorso | Cos'è |
 |---|---|
-| `browser_test.html` | Pagina del player a tutta finestra (js-dos v8, backend DOSBox-X) |
+| `index.html` | La pagina di gioco: launcher, player js-dos, comandi touch |
+| `js-dos/` | Player js-dos 8.5 e build WebAssembly di DOSBox-X servita con la pagina |
+| `assets/` | Grafica del launcher presa dal gioco (sfondo `NETMEGA.PCX`, logo) |
 | `omf2097.jsdos` | Bundle pronto da avviare: file del gioco più configurazione DOSBox |
 | `installed_game/` | Gioco installato e configurato |
 | `extracted/` | Contenuto originale del CD: installer e manuali |
 | `omf_clean_test/`, `*.zip`, `*.iso` | Archivi di origine e una copia preinstallata di riferimento |
+| `browser_test.html` | Pagina di test minima usata durante lo sviluppo (richiede `npm install`) |
 | `probe.js` | Esecuzione DOSBox headless: cattura dei frame, invio tasti, modifiche ai file in memoria |
 | `probe_fs.js` | Controlla che l'emulatore veda i file identici byte per byte |
-| `cdp_shot.js` | Pilota Chrome via CDP: carica, aspetta, clicca, fa lo screenshot |
+| `cdp_shot.js` | Pilota Chrome via CDP: carica, aspetta, clicca, fa lo screenshot, valuta espressioni |
 | `test_*.js`, `run_setup_gen.js` | Esperimenti precedenti di installazione e setup |
 
 ## Strumenti
 
 ```bash
+npm install
+
 # L'emulatore vede i file integri?
 node probe_fs.js installed_game
 
@@ -88,16 +109,18 @@ node probe.js dosbox "OMF.EXE" 30 mytag
 
 # Screenshot della pagina in Chrome vero
 google-chrome-stable --headless=new --remote-debugging-port=9333 --remote-allow-origins='*' --window-size=1280,720 about:blank &
-node cdp_shot.js "http://127.0.0.1:8734/browser_test.html" 20000 out.png [x,y] [waitAfterClickMs]
+node cdp_shot.js "http://127.0.0.1:8734/" 20000 out.png [x,y] [waitAfterClickMs]
 ```
 
 ## Opzioni di visualizzazione
 
-`browser_test.html` passa queste opzioni a `Dos()` di js-dos v8:
+`index.html` passa queste opzioni a `Dos()` di js-dos v8:
 
 | Opzione | Valore | Effetto |
 |---|---|---|
-| `autoStart` | `true` | Si avvia senza il tasto play |
-| `kiosk` | `true` | Nasconde la barra laterale del player |
-| `fullScreen` | `true` | Chiede lo schermo intero; il browser lo concede solo dopo un'azione dell'utente |
-| `renderAspect` | `"Fit"` | Riempie la finestra. Altri valori: `"AsIs"`, `"4/3"`, `"16/9"`, `"16/10"`, `"5/4"`, `"1/1"` |
+| `autoStart` | `true` | Si avvia appena scegli **Regular Game**, senza tasto play |
+| `kiosk` | `true` | Nasconde la barra laterale di js-dos |
+| `renderAspect` | `"Fit"` su desktop, `"4/3"` su touch | Su desktop riempie la finestra; sugli schermi touch il 4:3 lascia le bande laterali ai comandi |
+| modalità touch | `(pointer: coarse)` | Rilevata in automatico; `?touch=1` la forza attiva, `?touch=0` spenta |
+
+Altri valori di `renderAspect`: `"AsIs"`, `"16/9"`, `"16/10"`, `"5/4"`, `"1/1"`.

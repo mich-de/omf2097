@@ -7,4 +7,4 @@
   - In `README.md`: `**English** · [Italiano](README.it.md)`
   - In `README.it.md`: `[English](README.md) · **Italiano**`
 - When editing one, apply the same change to the other in the same commit.
-- This applies to the root README and to `0mf2097/` (the public GitHub Pages repo `mich-de/0mf2097`).
+- This applies to the root README (the repo is also the GitHub Pages site).
