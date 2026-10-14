@@ -8,15 +8,16 @@
 
 ![js-dos 8.5](https://img.shields.io/badge/js--dos-8.5-1f6feb?style=for-the-badge)
 ![DOSBox-X WebAssembly](https://img.shields.io/badge/DOSBox--X-WebAssembly-6e40c9?style=for-the-badge)
+![WebGL2 xBR e CRT](https://img.shields.io/badge/WebGL2-xBR_%C2%B7_CRT-2e7d32?style=for-the-badge)
 ![Uscito nel 1994](https://img.shields.io/badge/uscito_nel-1994-c62828?style=for-the-badge)
 
 [![▶ GIOCA ONLINE](https://img.shields.io/badge/%E2%96%B6_GIOCA_ONLINE-mich--de.github.io%2Fomf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/omf2097/)
 
 **▶ [Giocalo subito nel browser → mich-de.github.io/omf2097](https://mich-de.github.io/omf2097/)**
 
-<img src="screenshots/OK_hero_16-9.png" alt="Intro di One Must Fall 2097 a tutta finestra in Chrome" width="820">
+<img src="screenshots/GAMEPLAY_hero_xbr.png" alt="Shadow e Gargoyle si scontrano in aria nell'arena Fire Pit, disegnati con il filtro xBR" width="820">
 
-*Desktop e mobile, un'unica pagina: parte da sola e riempie lo schermo.*
+*Shadow contro Gargoyle nella Fire Pit: a tutta finestra su desktop, con il filtro xBR.*
 
 </div>
 
@@ -29,10 +30,19 @@ Nessuna installazione: apri **https://mich-de.github.io/omf2097/**, scegli **Reg
 - **Desktop:** il gioco riempie la finestra. Frecce per muoverti, `Invio` per il pugno, `Shift destro` per il calcio, `Esc` per il menu. Muovi il mouse per far comparire i tasti dello schermo intero e del filtro (in alto a sinistra), oppure premi `F11`.
 - **Telefono e tablet:** compaiono una croce direzionale e i tasti **PUNCH**, **KICK**, **ESC**, schermo intero e filtro. All'avvio del gioco viene chiesto lo schermo intero in orizzontale dove il browser lo consente (Android sì, iPhone no).
 - **Immagine:** su telefono e tablet la grafica è smussata con xBR di default; su desktop il filtro parte spento. `F9` o il tasto del filtro alternano **OFF** (i pixel originali), **XBR** e **CRT** (scanline, come un monitor del 1994), e la pagina ricorda la scelta.
-- **Nova:** nella schermata di selezione dei robot di una partita a un giocatore compare la casella **+ NOVA** (desktop, oppure premi `N`) o il tasto **PLAY WITH NOVA** sopra KICK (telefono). La pagina esegue per te il trucco originale e seleziona Nova, con qualsiasi pilota. In una partita a due il giocatore 2 deve ancora fare il trucco a mano.
+- **Nova:** nella schermata di selezione dei robot di una partita a un giocatore compare la casella **+ NOVA** (desktop, oppure premi `N`) o il tasto **PLAY WITH NOVA** sopra KICK (telefono). La pagina esegue per te il trucco originale e seleziona Nova, con qualsiasi dei dieci piloti. In una partita a due il giocatore 2 deve ancora fare il trucco a mano.
 - **Uscire:** scegli **QUIT** nel menu principale del gioco (`Esc` ci porta il cursore) e la pagina torna alla schermata iniziale.
 
 One Must Fall 2097 è freeware dal 1999. Questo repo è anche il sito: GitHub Pages lo serve direttamente dalla radice.
+
+## Gameplay
+
+| | |
+|:---:|:---:|
+| <img src="screenshots/GAMEPLAY_combo_xbr.png" width="400"><br>Colpi consecutivi nella Fire Pit, xBR | <img src="screenshots/GAMEPLAY_desert_crt.png" width="400"><br>L'arena nel deserto con il filtro CRT (ritaglio 1:1) |
+| <img src="screenshots/GAMEPLAY_phone_nova.png" width="400"><br>Telefono: Nova nell'arena-gabbia, comandi nelle bande laterali | <img src="screenshots/GAMEPLAY_phone_robots.png" width="400"><br>Telefono: **PLAY WITH NOVA** nella schermata dei robot |
+| <img src="screenshots/GAMEPLAY_robots_nova.png" width="400"><br>Desktop: la casella **+ NOVA**, in alto a destra | <img src="screenshots/GAMEPLAY_versus.png" width="400"><br>Provocazioni prima dello scontro |
+| <img src="screenshots/GAMEPLAY_menu.png" width="400"><br>Menu principale | <img src="screenshots/GAMEPLAY_pilots.png" width="400"><br>Dieci piloti tra cui scegliere |
 
 ## Avvio rapido
 
@@ -50,6 +60,8 @@ Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` a
 - **Un launcher fatto con la grafica del gioco.** Sfondo, scritte e pannelli vengono dalle schermate NetArena del 1994 incluse nel gioco.
 - **Impostazioni ottimizzate.** Velocità di gioco al 50%, audio Gravis Ultrasound stereo, CPU emulata al massimo.
 - **Immagine smussata o retrò.** Uno shader xBR ridisegna la grafica 320x200 con bordi morbidi sulla GPU, e l'effetto CRT è a un tasto di distanza. Attivo di default sul telefono; su desktop basta un tasto.
+- **Nova con un tocco.** Il robot segreto senza imparare il trucco a memoria, con qualsiasi pilota.
+- **Una croce fatta per combattere.** Diagonali che restano ferme e mosse speciali che non si spezzano a metà.
 - **Kit di test headless.** Avvia programmi DOS da Node, invia tasti, cattura ogni frame nuovo, modifica i file in memoria, pilota Chrome vero tramite il DevTools Protocol.
 
 ## Come è tornato in vita
@@ -62,14 +74,40 @@ Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` a
 6. **Un launcher nello stile del gioco.** La pagina usa `NETMEGA.PCX` come sfondo, disegna le scritte pixel per pixel con il font bitmap `NETFONT1.PCX` e i colori originali, e costruisce i pannelli informativi sulla griglia blu di `NETSET.PCX`. Resta visibile durante il testo di avvio di DOS e lascia il posto al gioco quando questo passa in grafica.
 7. **Comandi touch che parlano la lingua del gioco.** Croce e pulsanti inviano i tasti assegnati al giocatore 1 in `SETUP.CFG`: le frecce, `Invio` per il pugno, `Shift destro` per il calcio. Una diagonale tiene premute due frecce, come da tastiera, così ruotando il pollice da giù a giù-indietro si aggiunge solo indietro e a metà mossa non si passa mai dal neutro. Le diagonali basse (parata bassa, quarti di cerchio) hanno settori più larghi, e ogni direzione resta finché il pollice non supera il suo bordo di 10°, così un pollice che trema non salta tra due direzioni. Sugli schermi touch il gioco resta in 4:3, così i comandi stanno nelle bande laterali.
 8. **Impostazioni al meglio.** La velocità di gioco ora è al 50% di default (byte 0 di `SETUP.CFG`; al 100% era troppo veloce). L'audio è passato da un Sound Blaster mono che distorceva alla Gravis Ultrasound stereo, configurata con il `SETUP.EXE` originale del gioco. L'emulatore gira con `cycles=max`.
-9. **Nova senza trucchi.** La griglia dei robot ha dieci caselle fisse e Nova non ne ha una: l'unico modo è il trucco originale (passare su tutte e dieci le caselle, premere giù 11 o più volte su Katana, scegliere Flail). La pagina riconosce la schermata dei robot (un ritratto a colori, nove in grigio), e la casella NOVA ripete il trucco leggendo il cursore dallo schermo dopo ogni tasto, quindi funziona da qualsiasi posizione di partenza.
+9. **Nova senza trucchi.** La griglia dei robot ha dieci caselle fisse e Nova non ne ha una: l'unico modo è il trucco originale (passare su tutte e dieci le caselle, premere giù 11 o più volte su Katana, scegliere Flail). La pagina riconosce la schermata dei robot dal fotogramma, e la casella NOVA ripete il trucco leggendo il cursore dallo schermo dopo ogni tasto, quindi funziona da qualsiasi posizione di partenza.
 10. **Più liscio che nel 1994.** Texture ad alta risoluzione non esistono: il gioco disegna un fotogramma fisso di 320x200 a 256 colori. Allora la pagina filtra l'immagine. Il bundle spegne scaler, correzione d'aspetto e raddoppio delle righe di DOSBox-X (`scaler=none`, `aspect=false`, `doublescan=false`), così la pagina riceve il vero fotogramma 320x200 del gioco. Con XBR e CRT, un passaggio WebGL2 lo disegna poi su un canvas sopra quello di js-dos: xBR-lv2 di Hyllian (licenza MIT, adattato per leggere i pixel vicini con `texelFetch`) oppure uno shader CRT. Con OFF il fotogramma lo disegna js-dos, come prima. xBR è il default solo sugli schermi touch. Su desktop disegnare l'intera finestra toglieva all'emulatore fino a un terzo della velocità in Firefox, quindi lì il filtro parte spento. Senza GPU (WebGL software) i filtri non vengono proprio offerti: gli shader toglierebbero CPU all'emulatore, e quando succede OMF si chiude con un runtime error.
+11. **Aggiornamenti che arrivano davvero.** js-dos conserva ogni bundle scaricato nella memoria privata del browser (OPFS) e non lo ricontrolla più, quindi chi tornava continuava a giocare una copia vecchia. La pagina chiede al server l'ETag del bundle e carica `omf2097.jsdos?v=<ETag>`, una voce di cache nuova a ogni pubblicazione, e cancella le copie vecchie.
+12. **Uscire riporta a casa.** DOSBox-X segnala la modalità testo come larga 720 pixel. Dopo l'avvio del gioco, più di 1,5 s di modalità testo vogliono dire che è tornato a DOS (la schermata degli ordini e il prompt), quindi la pagina ricarica il launcher.
+13. **Schermo intero, nel verso giusto.** Sui telefoni l'avvio del gioco chiede lo schermo intero e blocca l'orizzontale; un tasto sotto ESC lo attiva e disattiva dopo. Su desktop i tasti di schermo intero e filtro stanno in alto a sinistra e spariscono quando il mouse si ferma.
+14. **Nova con ogni pilota.** Il ritratto del robot scelto prende i colori del pilota, e alcuni schemi sono spenti: con Christian la saturazione arriva solo a 28–35, quindi la casella non compariva mai, e con altri piloti lampeggiava. Ora la pagina si basa sugli altri nove ritratti: nessun colore e, in media, né neri né bianchi, il che tiene fuori anche dissolvenze, menu scuri e i lampi bianchi dell'intro. Provato con tutti e dieci i piloti.
 
-## Screenshot
+## Fatto con
+
+| Cosa | A cosa è servito |
+|---|---|
+| [js-dos](https://js-dos.com/) 8.5.3 (emulators 8.5.2) | Il player, la sua cache dei bundle e la CommandInterface: tasti, fotogrammi, screenshot, statistiche dell'emulatore |
+| DOSBox-X, compilato in WebAssembly | Il PC emulato: Gravis Ultrasound, `cycles=max`, uscita nativa 320x200 |
+| WebGL2 | xBR-lv2 di Hyllian ([libretro/glsl-shaders](https://github.com/libretro/glsl-shaders), MIT) e uno shader CRT con scanline e maschera a griglia d'apertura |
+| GitHub Pages | Hosting, direttamente dalla radice di questo repo |
+| Sorgenti di [OpenOMF](https://github.com/omf2097/openomf) | Il formato di `SETUP.CFG` (`src/formats/setup.h`) e il funzionamento del trucco di Nova (`melee.c`) |
+| [REA](https://github.com/morluto/rea) + Ghidra 12.1.4 | Decompilazione del launcher `OMF.EXE` |
+| Chrome DevTools Protocol, con il `WebSocket` integrato in Node | Test in Chrome headless: tasti, tocchi, screenshot, log di rete, prestazioni |
+| WebDriver BiDi | Le stesse misure in Firefox headless |
+| ImageMagick, `zipfile` di Python | Screenshot e confronti; modifica di `dosbox.conf` dentro il bundle |
+
+## Come è stato provato
+
+- **GPU vera e niente GPU.** Chrome headless sulla GPU Intel del portatile (`--use-angle=gl`) e con WebGL software (SwiftShader), più Firefox headless via WebDriver BiDi.
+- **Dritti all'emulatore.** Uno script aggancia `window.Dos` prima che la pagina si carichi, per arrivare alla CommandInterface di js-dos. Invia tasti all'emulatore, cattura i fotogrammi nativi 320x200 e legge `asyncifyStats()` (cicli per millisecondo) per confrontare la velocità dell'emulatore con e senza filtri.
+- **Un avversario che sta fermo.** Mosse e diagonali sono state verificate in una TWO PLAYER GAME, dove il giocatore 2 non tocca mai un tasto.
+- **Menu che saltano.** I menu del gioco a volte prendono due volte la stessa pressione, quindi gli script leggono dal fotogramma la riga evidenziata (la più luminosa) e correggono il cursore prima di confermare.
+- **Pollici.** Eventi touch su un telefono emulato, con il registro di ogni tasto che la croce invia mentre un dito le gira intorno.
+
+## Dietro le quinte
 
 | | |
 |:---:|:---:|
-| <img src="screenshots/OK_launcher_desktop.png" width="400"><br>Launcher su desktop | <img src="screenshots/OK_mobile_touch.png" width="400"><br>Telefono: croce e pulsanti durante un combattimento |
+| <img src="screenshots/OK_launcher_desktop.png" width="400"><br>Launcher su desktop | <img src="screenshots/OK_mobile_touch.png" width="400"><br>Prima versione dei comandi per telefono |
 | <img src="screenshots/OK_title_2097.png" width="400"><br>Schermata del titolo, avvio headless in Node | <img src="screenshots/OK_browser_boot.png" width="400"><br>Player js-dos in Chrome |
 | <img src="screenshots/OK_pillarbox_16-9.png" width="400"><br>`renderAspect: "4/3"`: bande laterali, nessuna distorsione | <img src="screenshots/CONFRONTO_stretch_16-9.png" width="400"><br>`renderAspect: "16/9"`: immagine stirata |
 | <img src="screenshots/OK_fit_no_bars.png" width="400"><br>`renderAspect: "Fit"`: riempie sempre | <img src="screenshots/CONFRONTO_filtri.png" width="400"><br>Filtri dell'immagine: OFF, XBR, CRT |
@@ -89,13 +127,14 @@ Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` a
 
 | Percorso | Cos'è |
 |---|---|
-| `index.html` | La pagina di gioco: launcher, player js-dos, comandi touch, filtri dell'immagine |
+| `index.html` | La pagina di gioco: launcher, player js-dos, comandi touch, filtri dell'immagine, casella NOVA |
 | `js-dos/` | Player js-dos 8.5 e build WebAssembly di DOSBox-X servita con la pagina |
 | `assets/` | Grafica del launcher presa dal gioco (sfondo `NETMEGA.PCX`, logo) |
 | `omf2097.jsdos` | Bundle pronto da avviare: file del gioco più configurazione DOSBox |
 | `installed_game/` | Gioco installato e configurato |
 | `extracted/` | Contenuto originale del CD: installer e manuali |
 | `omf_clean_test/`, `*.zip`, `*.iso` | Archivi di origine e una copia preinstallata di riferimento |
+| `screenshots/` | Le schermate di gioco e quelle di sviluppo mostrate qui sopra |
 | `browser_test.html` | Pagina di test minima usata durante lo sviluppo (richiede `npm install`) |
 | `probe.js` | Esecuzione DOSBox headless: cattura dei frame, invio tasti, modifiche ai file in memoria |
 | `probe_fs.js` | Controlla che l'emulatore veda i file identici byte per byte |
