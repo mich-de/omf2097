@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>One Must Fall 2097 — Play in your browser</title>
 <meta name="description" content="Play One Must Fall 2097 (Epic MegaGames, 1994 — freeware) directly in your browser, powered by js-dos and DOSBox-X.">
 <meta name="theme-color" content="#00005f">
@@ -15,7 +15,7 @@
   :root { --navy: #00005f; --red: #670000; }
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-  #jsdos { position: fixed; inset: 0; }
+  #jsdos { position: fixed; inset: 0; touch-action: none; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   #launcher {
@@ -79,6 +79,23 @@
   }
 
   @media (prefers-reduced-motion: reduce) { #launcher { transition: none; } }
+
+  /* Touch controls (phones/tablets): pixel art drawn at native size, --t px per art pixel. */
+  #touch { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+  #touch[hidden] { display: none; }
+  #touch canvas {
+    display: block; pointer-events: auto; opacity: .85;
+    width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
+    image-rendering: pixelated;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  }
+  #pad { position: absolute; left: calc(env(safe-area-inset-left) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px); }
+  #esc { position: absolute; left: calc(env(safe-area-inset-left) + 10px); top: calc(env(safe-area-inset-top) + 10px); }
+  #fight {
+    position: absolute; right: calc(env(safe-area-inset-right) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
 </style>
 </head>
 <body>
@@ -95,6 +112,11 @@
   </div>
 </main>
 <div id="jsdos"></div>
+<div id="touch" hidden aria-hidden="true">
+  <canvas id="esc"></canvas>
+  <canvas id="pad"></canvas>
+  <div id="fight"><canvas id="kick"></canvas><canvas id="punch"></canvas></div>
+</div>
 
 <script>
 (() => {
@@ -220,8 +242,9 @@
         ["Move", "Arrow keys"],
         ["Punch", "Enter"],
         ["Kick", "Right Shift"],
-        ["Menus", "Arrows + Enter, Esc to go back"],
+        ["Menus", "Arrows, Enter, Esc"],
         ["Full screen", "F11"],
+        ["Touch", "On-screen pad"],
         ["Download", "About 15 MB"],
       ],
       buttons: [{ label: "< Back" }],
@@ -353,17 +376,24 @@
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       blinkTimer = setInterval(() => { blinkOn = !blinkOn; drawLoading(); }, 400);
     }
+    if (touch) {
+      // Must run inside the tap; iPhone Safari has no element full screen, so failures are ignored.
+      const fs = document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
+      (fs || Promise.reject()).then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
+    }
     Dos(document.getElementById("jsdos"), {
       url: "omf2097.jsdos",
       pathPrefix: "js-dos/emulators/",
       backend: "dosboxX",
       autoStart: true,
       kiosk: true,
-      renderAspect: "Fit",
+      // On touch screens keep 4:3 so the controls sit in the side bands instead of over the fight.
+      renderAspect: touch ? "4/3" : "Fit",
       // Keep the launcher up through the DOS boot text. DOSBox-X reports text mode as 720 wide;
       // the first switch away from it after boot is the game going into graphics.
       onEvent: (e, ci) => {
         if (e !== "ci-ready" || !ci) return;
+        gameCi = ci;
         let sawText = false;
         const poll = setInterval(() => {
           if (ci.width() === 720) sawText = true;
@@ -379,6 +409,174 @@
     clearInterval(blinkTimer);
     launcher.classList.add("off");
     launcher.inert = true;
+    if (touch) showTouch();
+  }
+
+  // ---------- touch controls ----------
+  // Key codes are js-dos's (GLFW numbering). Player 1 in SETUP.CFG: arrows plus the keypad
+  // diagonals (PgUp/PgDn/End/Home), punch = Enter, kick = Right Shift.
+  const KEY = { esc: 256, enter: 257, right: 262, left: 263, down: 264, up: 265, pgUp: 266, pgDn: 267, home: 268, end: 269, rShift: 344 };
+  // 8 sectors clockwise from "right" (screen y grows downwards).
+  const DIR_KEYS = [KEY.right, KEY.pgDn, KEY.down, KEY.end, KEY.left, KEY.home, KEY.up, KEY.pgUp];
+  const DIR_ARMS = [["R"], ["D", "R"], ["D"], ["D", "L"], ["L"], ["U", "L"], ["U"], ["U", "R"]];
+  const PRESSED_FILL = "#3c3c65";
+  const query = new URLSearchParams(location.search).get("touch");
+  const touch = query !== null ? query !== "0" : matchMedia("(pointer: coarse)").matches;
+  const touchEl = document.getElementById("touch");
+  const padCv = document.getElementById("pad");
+  const escCv = document.getElementById("esc");
+  const punchCv = document.getElementById("punch");
+  const kickCv = document.getElementById("kick");
+  const held = new Set();
+  let gameCi = null;
+
+  function keyDown(code) {
+    if (held.has(code)) return;
+    held.add(code);
+    gameCi?.sendKeyEvent(code, true);
+    navigator.vibrate?.(8);
+  }
+  function keyUp(code) {
+    if (!held.delete(code)) return;
+    gameCi?.sendKeyEvent(code, false);
+  }
+  function releaseAll() { [...held].forEach(keyUp); }
+
+  function sizeCanvas(cv, w, h) {
+    cv.width = w;
+    cv.height = h;
+    cv.style.setProperty("--w", w);
+    cv.style.setProperty("--h", h);
+    return cv.getContext("2d");
+  }
+  const dot = (ctx, x, y, col) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
+
+  // Cross-shaped pad, 51x51, NETSET grid inside, lit arms for the active direction.
+  function drawPad(dir) {
+    const ctx = sizeCanvas(padCv, 51, 51);
+    const arms = dir < 0 ? [] : DIR_ARMS[dir];
+    const inCross = (x, y, i) =>
+      (x >= 17 + i && x <= 33 - i && y >= i && y <= 50 - i) || (y >= 17 + i && y <= 33 - i && x >= i && x <= 50 - i);
+    const armAt = (x, y) => (y < 17 ? "U" : y > 33 ? "D" : x < 17 ? "L" : x > 33 ? "R" : "");
+    for (let y = 0; y < 51; y++) {
+      for (let x = 0; x < 51; x++) {
+        if (!inCross(x, y, 0)) continue;
+        const col = !inCross(x, y, 1) ? C.text
+          : arms.includes(armAt(x, y)) ? PRESSED_FILL
+          : x % 6 === 0 || y % 6 === 0 ? C.grid : C.panel;
+        dot(ctx, x, y, col);
+      }
+    }
+    for (const [arm, cx, cy] of [["U", 25, 9], ["D", 25, 41], ["L", 9, 25], ["R", 41, 25]]) {
+      const col = arms.includes(arm) ? C.hot : C.text;
+      for (let i = 0; i < 4; i++) {
+        for (let j = -i; j <= i; j++) {
+          if (arm === "U") dot(ctx, cx + j, cy - 2 + i, col);
+          else if (arm === "D") dot(ctx, cx + j, cy + 2 - i, col);
+          else if (arm === "L") dot(ctx, cx - 2 + i, cy + j, col);
+          else dot(ctx, cx + 2 - i, cy + j, col);
+        }
+      }
+    }
+  }
+
+  // Round button with its label underneath in the game font.
+  function drawButton(cv, label, ring, down) {
+    const lw = textW(label), w = Math.max(27, lw) + 2, h = 39;
+    const ctx = sizeCanvas(cv, w, h);
+    const cx = Math.floor(w / 2);
+    for (let y = 0; y < 27; y++) {
+      for (let x = -13; x <= 13; x++) {
+        const d = x * x + (y - 13) * (y - 13);
+        if (d > 13.5 * 13.5) continue;
+        const col = d > 12.2 * 12.2 ? (down ? C.hot : ring)
+          : down ? PRESSED_FILL
+          : (cx + x) % 6 === 0 || y % 6 === 0 ? C.grid : C.panel;
+        dot(ctx, cx + x, y, col);
+      }
+    }
+    drawText(ctx, label, Math.floor((w - lw) / 2), 29, down ? C.hot : ring, C.ink);
+  }
+
+  function drawEsc(down) {
+    const w = textW("ESC") + 6, h = 14;
+    const ctx = sizeCanvas(escCv, w, h);
+    ctx.fillStyle = down ? C.hot : C.text;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = down ? PRESSED_FILL : C.panel;
+    ctx.fillRect(1, 1, w - 2, h - 2);
+    drawText(ctx, "ESC", 3, 2, down ? C.hot : C.body, C.ink);
+  }
+
+  function bindPad() {
+    let pid = null, dir = -1;
+    const set = (d) => {
+      if (d === dir) return;
+      if (dir >= 0) keyUp(DIR_KEYS[dir]);
+      dir = d;
+      if (dir >= 0) keyDown(DIR_KEYS[dir]);
+      drawPad(dir);
+    };
+    const track = (e) => {
+      const r = padCv.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      if (Math.hypot(dx, dy) < r.width * 0.12) set(-1);
+      else set((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8);
+    };
+    const end = (e) => { if (e.pointerId === pid) { pid = null; set(-1); } };
+    padCv.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      pid = e.pointerId;
+      padCv.setPointerCapture(pid);
+      track(e);
+    });
+    padCv.addEventListener("pointermove", (e) => { if (e.pointerId === pid) track(e); });
+    padCv.addEventListener("pointerup", end);
+    padCv.addEventListener("pointercancel", end);
+  }
+
+  function bindButton(cv, code, draw) {
+    let pid = null;
+    const end = (e) => {
+      if (e.pointerId !== pid) return;
+      pid = null;
+      keyUp(code);
+      draw(false);
+    };
+    cv.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      if (pid !== null) return;
+      pid = e.pointerId;
+      cv.setPointerCapture(pid);
+      keyDown(code);
+      draw(true);
+    });
+    cv.addEventListener("pointerup", end);
+    cv.addEventListener("pointercancel", end);
+  }
+
+  function layoutTouch() {
+    const t = Math.max(2, Math.min(5, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
+    touchEl.style.setProperty("--t", t + "px");
+  }
+
+  function showTouch() {
+    const drawPunch = (down) => drawButton(punchCv, "PUNCH", C.label, down);
+    const drawKick = (down) => drawButton(kickCv, "KICK", C.text, down);
+    drawPad(-1);
+    drawEsc(false);
+    drawPunch(false);
+    drawKick(false);
+    bindPad();
+    bindButton(punchCv, KEY.enter, drawPunch);
+    bindButton(kickCv, KEY.rShift, drawKick);
+    bindButton(escCv, KEY.esc, drawEsc);
+    touchEl.addEventListener("contextmenu", (e) => e.preventDefault());
+    addEventListener("resize", layoutTouch);
+    addEventListener("blur", releaseAll);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) releaseAll(); });
+    layoutTouch();
+    touchEl.hidden = false;
   }
 
   const actions = {
