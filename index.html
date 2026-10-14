@@ -852,16 +852,18 @@
 
   // ---------- picture filter ----------
   // The bundle turns off DOSBox-X's own scaler, aspect correction and line doubling, so js-dos
-  // receives the game's real 320x200 frame. This WebGL2 pass scales it to the screen: xBR smooths
-  // the pixel art, CRT imitates a 1994 monitor, OFF keeps square pixels. It draws on a canvas laid
-  // over js-dos's own, at the same place and aspect; where it can't run, js-dos keeps drawing.
-  const FILTERS = ["xbr", "crt", "off"];
+  // receives the game's real 320x200 frame. XBR and CRT redraw it with WebGL2 on a canvas laid over
+  // js-dos's own, at the same place and aspect: xBR smooths the pixel art, CRT imitates a 1994
+  // monitor. OFF leaves the drawing to js-dos (square pixels).
+  // xBR is the default on touch screens only: on desktop the full-window pass costs the emulator
+  // up to a third of its speed in Firefox, so there it starts off and is one key away.
+  const FILTERS = ["off", "xbr", "crt"];
   const FILTER_LABELS = { xbr: "XBR", crt: "CRT", off: "OFF" };
   const FILTER_NAMES = { xbr: "xBR", crt: "CRT", off: "off" };
   const screenCv = document.getElementById("screen");
   const filterBtn = document.getElementById("filter");
   const filterCv = filterBtn.querySelector("canvas");
-  let filter = "xbr", filterReady = false;
+  let filter = touch ? "xbr" : "off", filterReady = false;
   try {
     const saved = localStorage.getItem("omf2097.filter");
     if (FILTERS.includes(saved)) filter = saved;
@@ -879,12 +881,6 @@ in vec2 uv;
 out vec4 color;
 `;
   const FILTER_FS = {
-    // Square pixels, with a one-screen-pixel blend at their edges so uneven scales stay even.
-    off: FILTER_HEAD + `
-void main() {
-  vec2 size = vec2(textureSize(frame, 0)), p = uv * size, e = floor(p + 0.5);
-  color = vec4(texture(frame, (e + clamp((p - e) / fwidth(p), -0.5, 0.5)) / size).rgb, 1.0);
-}`,
     // A 1994 monitor: soft beam, one scanline per game line, aperture-grille mask.
     crt: FILTER_HEAD + `
 ivec2 lim;
@@ -1053,6 +1049,7 @@ void main() {
     const renderer = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
     if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)) return;
 
+    // Shaders are compiled the first time their filter is picked.
     const programs = {};
     const program = (name) => {
       if (name in programs) return programs[name];
@@ -1077,15 +1074,9 @@ void main() {
       }
       return programs[name];
     };
-    // Next filter that compiles on this device, starting with the given one.
-    const usable = (from) => {
-      for (let i = 0; i < FILTERS.length; i++) {
-        const f = FILTERS[(FILTERS.indexOf(from) + i) % FILTERS.length];
-        if (program(f)) return f;
-      }
-      return null;
-    };
-    if (!(filter = usable(filter))) return;
+    // OFF needs no shader; XBR and CRT only count if theirs compiles on this device.
+    const usable = (f) => f === "off" || !!program(f);
+    if (!usable(filter)) filter = "off";
 
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
@@ -1101,19 +1092,27 @@ void main() {
     // js-dos hands every listener the same frame buffer (RGB, updated in place); upload it at most
     // once per display frame.
     let frame = null, fresh = false, texW = 0, texH = 0, texFmt = 0;
-    let live = true, shown = false, redraw = true, boxL = 0, boxT = 0, boxW = 0, boxH = 0;
+    let running = false, lost = false, shown = false, redraw = true, boxL = 0, boxT = 0, boxW = 0, boxH = 0;
     ci.events().onFrame((rgb, rgba) => { frame = rgb || rgba; fresh = true; });
 
-    const stop = () => {
-      live = false;
+    // Give the screen back to js-dos.
+    const hide = () => {
+      shown = false;
       screenCv.hidden = true;
       jsCv.style.visibility = "";
-      filterBtn.hidden = true;
     };
-    screenCv.addEventListener("webglcontextlost", stop);
+    screenCv.addEventListener("webglcontextlost", () => {
+      lost = true;
+      filterBtn.hidden = true;
+    });
 
+    // Runs only while XBR or CRT is on.
     const render = () => {
-      if (!live) return;
+      if (lost || filter === "off") {
+        running = false;
+        hide();
+        return;
+      }
       requestAnimationFrame(render);
       // Follow js-dos's canvas: it already has the place and aspect the page asked for.
       const r = jsCv.getBoundingClientRect();
@@ -1160,11 +1159,21 @@ void main() {
       }
     };
 
+    const start = () => {
+      if (running || lost || filter === "off") return;
+      running = true;
+      fresh = redraw = true; // upload the current frame even if the screen is still
+      requestAnimationFrame(render);
+    };
+
     const next = () => {
-      filter = usable(FILTERS[(FILTERS.indexOf(filter) + 1) % FILTERS.length]);
+      let i = FILTERS.indexOf(filter);
+      do i = (i + 1) % FILTERS.length; while (!usable(FILTERS[i]));
+      filter = FILTERS[i];
       try { localStorage.setItem("omf2097.filter", filter); } catch {}
       drawFilter();
       redraw = true;
+      start();
     };
     filterBtn.addEventListener("click", next);
     // F9 switches the filter; the game never sees it.
@@ -1178,7 +1187,7 @@ void main() {
 
     drawFilter();
     filterBtn.hidden = false;
-    requestAnimationFrame(render);
+    start();
   }
 
   const actions = {

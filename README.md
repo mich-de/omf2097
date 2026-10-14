@@ -28,7 +28,7 @@ No install needed: open **https://mich-de.github.io/omf2097/**, pick **Regular G
 
 - **Desktop:** the game fills the window. Arrow keys to move, `Enter` to punch, `Right Shift` to kick, `Esc` for the menu. Move the mouse to show the full screen and filter buttons (top left), or press `F11`.
 - **Phone and tablet:** an on-screen pad appears with **PUNCH**, **KICK**, **ESC**, a full screen button and the filter button. Starting the game asks for landscape full screen where the browser allows it (Android does, iPhone doesn't).
-- **Picture:** the pixel art is smoothed with xBR by default. `F9` or the **XBR** button switches to **CRT** (scanlines, like a 1994 monitor) and **OFF** (the raw pixels); the page remembers your choice.
+- **Picture:** phones and tablets smooth the pixel art with xBR by default; on desktop the filter starts off. `F9` or the filter button cycles **OFF** (the raw pixels), **XBR** and **CRT** (scanlines, like a 1994 monitor), and the page remembers your choice.
 - **Nova:** on the robot selection screen of a one-player game, a **+ NOVA** tile (desktop, or press `N`) or a **PLAY WITH NOVA** button above KICK (phone) appears. The page performs the original cheat for you and picks Nova, with any pilot. In a two-player game player 2 still has to do the cheat by hand.
 - **Leaving:** pick **QUIT** in the game's main menu (`Esc` jumps to it) and the page goes back to the start screen.
 
@@ -49,7 +49,7 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 - **One page for desktop and mobile.** Touch screens get an on-screen pad and buttons; keyboards just work.
 - **A launcher made of the game's own art.** Background, lettering and panels come from the 1994 NetArena screens shipped with the game.
 - **Tuned settings.** 50% game speed, Gravis Ultrasound stereo sound, full emulated CPU.
-- **Smooth or retro picture.** An xBR shader redraws the 320x200 pixel art with smooth edges on the GPU; a CRT look and plain pixels are one key away.
+- **Smooth or retro picture.** An xBR shader redraws the 320x200 pixel art with smooth edges on the GPU, and a CRT look is one key further. On by default on phones; on desktop, one key away.
 - **Headless test kit.** Boot DOS programs from Node, inject keys, capture every new frame, patch files in memory, drive real Chrome over the DevTools Protocol.
 
 ## How it was brought back to life
@@ -63,7 +63,7 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 7. **Touch controls that speak the game's language.** The pad and buttons send exactly the keys player 1 is bound to in `SETUP.CFG`: arrows plus the keypad diagonals, `Enter` to punch, `Right Shift` to kick. On touch screens the game keeps 4:3 so the controls sit in the side bands.
 8. **Settings at their best.** Game speed now defaults to 50% (`SETUP.CFG` byte 0; 100% was far too fast). Sound moved from a mono Sound Blaster setup that clipped to Gravis Ultrasound stereo, configured with the game's own `SETUP.EXE`. The emulator runs at `cycles=max`.
 9. **Nova without the cheat.** The robot grid has ten fixed slots and Nova has none: the only way in is the original cheat (visit all ten slots, press Down 11+ times on Katana, pick Flail). The page recognises the robot screen (one portrait in colour, nine in grey), and the NOVA tile replays the cheat, reading the cursor from the screen after every key so it works from any starting position.
-10. **Smoother than in 1994.** Higher-resolution textures don't exist: the game draws a fixed 320x200, 256-colour frame. So the page filters the picture instead. The bundle switches off DOSBox-X's scaler, aspect correction and line doubling (`scaler=none`, `aspect=false`, `doublescan=false`), so the page receives the game's real 320x200 frame. A WebGL2 pass then draws it on a canvas laid over js-dos's own, in one of three ways: Hyllian's xBR-lv2 (MIT licence, adapted to read its neighbours with `texelFetch`), a CRT shader, or square pixels. All of it runs on the GPU. Without a GPU (software WebGL) the filter stays off: there the shaders would take CPU from the emulator, and OMF crashes with a runtime error when that happens.
+10. **Smoother than in 1994.** Higher-resolution textures don't exist: the game draws a fixed 320x200, 256-colour frame. So the page filters the picture instead. The bundle switches off DOSBox-X's scaler, aspect correction and line doubling (`scaler=none`, `aspect=false`, `doublescan=false`), so the page receives the game's real 320x200 frame. For XBR and CRT, a WebGL2 pass then draws it on a canvas laid over js-dos's own: Hyllian's xBR-lv2 (MIT licence, adapted to read its neighbours with `texelFetch`) or a CRT shader. With OFF, js-dos draws the frame itself as before. xBR is the default on touch screens only. On desktop, drawing the full window cost the emulator up to a third of its speed in Firefox, so there the filter starts off. Without a GPU (software WebGL) the filters are not offered at all: the shaders would take CPU from the emulator, and OMF crashes with a runtime error when that happens.
 
 ## Screenshots
 
@@ -83,7 +83,7 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 | Emulated CPU | `cycles=max` | `dosbox.conf` and `jsdos.json` in the bundle |
 | Video | Shadows high, animations, palette animation and screen shakes on | Game defaults, already the maximum |
 | Video output | The game's own 320x200 frame (`scaler=none`, `aspect=false`, `doublescan=false`) | `dosbox.conf` in the bundle |
-| Picture filter | xBR by default (also CRT, off) | `index.html`, WebGL2 |
+| Picture filter | xBR on phones and tablets, off on desktop (`F9` cycles OFF, XBR, CRT) | `index.html`, WebGL2 |
 
 ## What's in the repo
 
@@ -130,6 +130,6 @@ node cdp_shot.js "http://127.0.0.1:8734/" 20000 out.png [x,y] [waitAfterClickMs]
 | `kiosk` | `true` | Hides the js-dos sidebar |
 | `renderAspect` | `"Fit"` on desktop, `"4/3"` on touch | Desktop fills the window; on touch screens 4:3 leaves side bands for the controls |
 | touch mode | `(pointer: coarse)` | Detected automatically; `?touch=1` forces it on, `?touch=0` off |
-| picture filter | `xbr` | Drawn by the page on the GPU; `F9` or the button cycles XBR, CRT, OFF, and the choice is kept in `localStorage` |
+| picture filter | `xbr` on touch, `off` on desktop | XBR and CRT are drawn by the page on the GPU, OFF by js-dos; `F9` or the button cycles them, and the choice is kept in `localStorage` |
 
 Other `renderAspect` values: `"AsIs"`, `"16/9"`, `"16/10"`, `"5/4"`, `"1/1"`.
