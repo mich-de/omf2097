@@ -28,6 +28,7 @@ Nessuna installazione: apri **https://mich-de.github.io/omf2097/**, scegli **Reg
 
 - **Desktop:** il gioco riempie la finestra. Frecce per muoverti, `Invio` per il pugno, `Shift destro` per il calcio, `Esc` per il menu. `F11` per lo schermo intero vero.
 - **Telefono e tablet:** compaiono una croce direzionale e i tasti **PUNCH**, **KICK** ed **ESC**. All'avvio del gioco viene chiesto lo schermo intero in orizzontale dove il browser lo consente (Android sì, iPhone no).
+- **Uscire:** scegli **QUIT** nel menu principale del gioco (`Esc` ci porta il cursore) e la pagina torna alla schermata iniziale.
 
 One Must Fall 2097 è freeware dal 1999. Questo repo è anche il sito: GitHub Pages lo serve direttamente dalla radice.
 

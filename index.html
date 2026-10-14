@@ -389,15 +389,26 @@
       kiosk: true,
       // On touch screens keep 4:3 so the controls sit in the side bands instead of over the fight.
       renderAspect: touch ? "4/3" : "Fit",
-      // Keep the launcher up through the DOS boot text. DOSBox-X reports text mode as 720 wide;
-      // the first switch away from it after boot is the game going into graphics.
+      // DOSBox-X reports text mode as 720 wide. Keep the launcher up through the DOS boot text;
+      // the first switch to graphics is the game starting. Text mode again after that means the
+      // game quit to DOS (its order screen and the prompt), so go back to the launcher.
       onEvent: (e, ci) => {
         if (e !== "ci-ready" || !ci) return;
         gameCi = ci;
-        let sawText = false;
+        let sawText = false, playing = false, textSince = 0;
         const poll = setInterval(() => {
-          if (ci.width() === 720) sawText = true;
-          else if (sawText) { clearInterval(poll); reveal(); }
+          const text = ci.width() === 720;
+          if (!playing) {
+            if (text) sawText = true;
+            else if (sawText) { playing = true; reveal(); }
+          } else if (!text) {
+            textSince = 0;
+          } else if (!textSince) {
+            textSince = Date.now();
+          } else if (Date.now() - textSince > 1500) {
+            clearInterval(poll);
+            location.reload();
+          }
         }, 250);
       },
     }));
