@@ -1,5 +1,8 @@
 <div align="center">
 
+**▶ Gioca online:** https://mich-de.github.io/0mf2097/ (sito pubblicato dal repo pubblico [mich-de/0mf2097](https://github.com/mich-de/0mf2097), generato da `git subtree split --prefix=0mf2097`)
+
+
 # ONE MUST FALL 2097
 
 ### The 1994 robot fighting classic, booting in your browser
