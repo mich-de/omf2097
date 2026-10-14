@@ -1,8 +1,5 @@
 <div align="center">
 
-**▶ Gioca online:** https://mich-de.github.io/0mf2097/ (sito pubblicato dal repo pubblico [mich-de/0mf2097](https://github.com/mich-de/0mf2097), generato da `git subtree split --prefix=0mf2097`)
-
-
 # ONE MUST FALL 2097
 
 ### The 1994 robot fighting classic, booting in your browser
@@ -13,6 +10,10 @@
 ![DOSBox-X WebAssembly](https://img.shields.io/badge/DOSBox--X-WebAssembly-6e40c9?style=for-the-badge)
 ![Released 1994](https://img.shields.io/badge/released-1994-c62828?style=for-the-badge)
 
+[![▶ PLAY ONLINE](https://img.shields.io/badge/%E2%96%B6_PLAY_ONLINE-mich--de.github.io%2F0mf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/0mf2097/)
+
+**▶ [Play it now in your browser → mich-de.github.io/0mf2097](https://mich-de.github.io/0mf2097/)**
+
 <img src="screenshots/OK_hero_16-9.png" alt="One Must Fall 2097 intro running full-window in Chrome" width="820">
 
 *Starts on its own, fills any window with no black bars, no player UI in the way.*
@@ -20,6 +21,11 @@
 </div>
 
 ---
+
+## Play online
+
+No install needed: **https://mich-de.github.io/0mf2097/** — click **▶ GIOCA** and wait for the ~15 MB download.
+The site is served by GitHub Pages from the public repo [mich-de/0mf2097](https://github.com/mich-de/0mf2097), generated from the [`0mf2097/`](0mf2097/) folder with `git subtree split --prefix=0mf2097`.
 
 ## Quick start
 

@@ -10,6 +10,10 @@
 ![DOSBox-X WebAssembly](https://img.shields.io/badge/DOSBox--X-WebAssembly-6e40c9?style=for-the-badge)
 ![Uscito nel 1994](https://img.shields.io/badge/uscito_nel-1994-c62828?style=for-the-badge)
 
+[![▶ GIOCA ONLINE](https://img.shields.io/badge/%E2%96%B6_GIOCA_ONLINE-mich--de.github.io%2F0mf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/0mf2097/)
+
+**▶ [Giocalo subito nel browser → mich-de.github.io/0mf2097](https://mich-de.github.io/0mf2097/)**
+
 <img src="screenshots/OK_hero_16-9.png" alt="Intro di One Must Fall 2097 a tutta finestra in Chrome" width="820">
 
 *Parte da solo, riempie qualsiasi finestra senza barre nere, nessuna interfaccia del player in mezzo.*
@@ -17,6 +21,11 @@
 </div>
 
 ---
+
+## Gioca online
+
+Nessuna installazione: **https://mich-de.github.io/0mf2097/** — clicca **▶ GIOCA** e attendi il download di circa 15 MB.
+Il sito è servito da GitHub Pages dal repo pubblico [mich-de/0mf2097](https://github.com/mich-de/0mf2097), generato dalla cartella [`0mf2097/`](0mf2097/) con `git subtree split --prefix=0mf2097`.
 
 ## Avvio rapido
 
