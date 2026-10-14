@@ -47,11 +47,16 @@ async function main() {
     const logText = await send('Runtime.evaluate', { expression: 'JSON.stringify(window.testLog || [])', returnByValue: true });
     console.log('testLog raw:', JSON.stringify(logText));
 
-    const consoleEvents = events.filter(e => e.method === 'Runtime.consoleAPICalled' || e.method === 'Log.entryAdded');
+    const consoleEvents = events.filter(e => ['Runtime.consoleAPICalled', 'Log.entryAdded', 'Runtime.exceptionThrown'].includes(e.method));
     for (const e of consoleEvents.slice(-20)) {
         const p = e.params;
         if (p.args) console.log('[console]', p.args.map(a => a.value ?? a.description).join(' '));
         else if (p.entry) console.log('[log]', p.entry.level, p.entry.text);
+        else if (p.exceptionDetails) console.log('[exception]', p.exceptionDetails.exception?.description || p.exceptionDetails.text);
+    }
+    if (process.env.EVAL) {
+        const r = await send('Runtime.evaluate', { expression: process.env.EVAL, returnByValue: true });
+        console.log('[eval]', JSON.stringify(r.result?.result?.value ?? r.result?.exceptionDetails?.text ?? r));
     }
 
     const shot = await send('Page.captureScreenshot', { format: 'png' });
