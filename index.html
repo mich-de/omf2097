@@ -16,6 +16,9 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
   #jsdos { position: fixed; inset: 0; touch-action: none; }
+  /* The picture filter draws the game here, over js-dos's own canvas (see setupFilter). */
+  #screen { position: fixed; z-index: 1; display: block; pointer-events: none; }
+  #screen[hidden] { display: none; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   #launcher {
@@ -111,22 +114,26 @@
   /* On touch screens it sits above KICK; in portrait there is no room there, so top right. */
   #fight #nova { position: static; pointer-events: auto; }
 
-  /* Full screen toggle: under ESC on touch screens; on desktop top left, shown while the mouse moves. */
-  #fs {
+  /* Full screen and picture filter buttons: on desktop top left, shown while the mouse moves;
+     on touch screens they move under ESC. */
+  #tools {
     position: fixed; z-index: 21;
     top: calc(env(safe-area-inset-top) + 10px); left: calc(env(safe-area-inset-left) + 10px);
-    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
-    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    display: flex; align-items: flex-start; gap: 6px;
     transition: opacity .3s;
   }
-  #fs[hidden] { display: none; }
-  #fs.idle { opacity: 0; pointer-events: none; }
-  #fs:focus { outline: none; }
-  #fs canvas {
+  #tools.idle { opacity: 0; pointer-events: none; }
+  .tool {
+    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .tool[hidden] { display: none; }
+  .tool:focus { outline: none; }
+  .tool canvas {
     display: block; image-rendering: pixelated;
     width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
   }
-  #sys #fs { position: static; pointer-events: auto; }
+  #sys .tool { pointer-events: auto; }
   @media (orientation: portrait) {
     #fight #nova { position: fixed; top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px); }
   }
@@ -151,13 +158,17 @@
   </div>
 </main>
 <div id="jsdos"></div>
+<canvas id="screen" hidden aria-hidden="true"></canvas>
 <div id="touch" hidden>
   <div id="sys"><canvas id="esc" aria-hidden="true"></canvas></div>
   <canvas id="pad" aria-hidden="true"></canvas>
   <div id="fight"><canvas id="kick" aria-hidden="true"></canvas><canvas id="punch" aria-hidden="true"></canvas></div>
 </div>
 <button id="nova" type="button" hidden aria-label="Play with Nova"><canvas aria-hidden="true"></canvas></button>
-<button id="fs" type="button" hidden aria-label="Full screen"><canvas aria-hidden="true"></canvas></button>
+<div id="tools">
+  <button id="fs" class="tool" type="button" hidden aria-label="Full screen"><canvas aria-hidden="true"></canvas></button>
+  <button id="filter" class="tool" type="button" hidden title="Picture filter (F9)"><canvas aria-hidden="true"></canvas></button>
+</div>
 
 <script>
 (() => {
@@ -285,6 +296,7 @@
         ["Kick", "Right Shift"],
         ["Menus", "Arrows, Enter, Esc"],
         ["Full screen", "F11"],
+        ["Filter", "F9: xBR, CRT, off"],
         ["Touch", "On-screen pad"],
         ["Nova", "N on robot screen"],
       ],
@@ -441,7 +453,7 @@
           const text = ci.width() === 720;
           if (!playing) {
             if (text) sawText = true;
-            else if (sawText) { playing = true; reveal(); }
+            else if (sawText) { playing = true; reveal(); setupFilter(ci); }
           } else if (!text) {
             textSince = 0;
           } else if (!textSince) {
@@ -487,6 +499,7 @@
     if (touch) showTouch();
     watchForRobotScreen();
     setupFullscreenButton();
+    setupCornerButtons();
   }
 
   // ---------- touch controls ----------
@@ -814,22 +827,358 @@
           .catch(() => {});
       }
     });
-    if (touch) {
-      document.getElementById("sys").append(fsBtn);
-    } else {
-      const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
-      fsBtn.style.setProperty("--t", t + "px");
-      // Show it while the mouse moves, then get out of the way.
-      let idleTimer = 0;
-      const wake = () => {
-        fsBtn.classList.remove("idle");
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => fsBtn.classList.add("idle"), 2500);
-      };
-      addEventListener("mousemove", wake);
-      wake();
-    }
     fsBtn.hidden = false;
+  }
+
+  // Full screen and filter buttons: on touch screens in the column under ESC; on desktop
+  // top left, shown while the mouse moves, then out of the way.
+  const tools = document.getElementById("tools");
+  function setupCornerButtons() {
+    if (touch) {
+      document.getElementById("sys").append(fsBtn, filterBtn);
+      return;
+    }
+    const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
+    tools.style.setProperty("--t", t + "px");
+    let idleTimer = 0;
+    const wake = () => {
+      tools.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => tools.classList.add("idle"), 2500);
+    };
+    addEventListener("mousemove", wake);
+    wake();
+  }
+
+  // ---------- picture filter ----------
+  // The bundle turns off DOSBox-X's own scaler, aspect correction and line doubling, so js-dos
+  // receives the game's real 320x200 frame. This WebGL2 pass scales it to the screen: xBR smooths
+  // the pixel art, CRT imitates a 1994 monitor, OFF keeps square pixels. It draws on a canvas laid
+  // over js-dos's own, at the same place and aspect; where it can't run, js-dos keeps drawing.
+  const FILTERS = ["xbr", "crt", "off"];
+  const FILTER_LABELS = { xbr: "XBR", crt: "CRT", off: "OFF" };
+  const FILTER_NAMES = { xbr: "xBR", crt: "CRT", off: "off" };
+  const screenCv = document.getElementById("screen");
+  const filterBtn = document.getElementById("filter");
+  const filterCv = filterBtn.querySelector("canvas");
+  let filter = "xbr", filterReady = false;
+  try {
+    const saved = localStorage.getItem("omf2097.filter");
+    if (FILTERS.includes(saved)) filter = saved;
+  } catch {}
+
+  // One quad over the whole canvas; uv starts at the frame's top left (row 0 is uploaded first).
+  const FILTER_VS = `#version 300 es
+in vec2 pos;
+out vec2 uv;
+void main() { gl_Position = vec4(pos, 0.0, 1.0); uv = vec2(pos.x + 1.0, 1.0 - pos.y) * 0.5; }`;
+  const FILTER_HEAD = `#version 300 es
+precision highp float;
+uniform sampler2D frame;
+in vec2 uv;
+out vec4 color;
+`;
+  const FILTER_FS = {
+    // Square pixels, with a one-screen-pixel blend at their edges so uneven scales stay even.
+    off: FILTER_HEAD + `
+void main() {
+  vec2 size = vec2(textureSize(frame, 0)), p = uv * size, e = floor(p + 0.5);
+  color = vec4(texture(frame, (e + clamp((p - e) / fwidth(p), -0.5, 0.5)) / size).rgb, 1.0);
+}`,
+    // A 1994 monitor: soft beam, one scanline per game line, aperture-grille mask.
+    crt: FILTER_HEAD + `
+ivec2 lim;
+vec3 fetch(ivec2 p) { vec3 c = texelFetch(frame, clamp(p, ivec2(0), lim), 0).rgb; return c * c; }
+float gaus(float d, float hard) { return exp2(-hard * d * d); }
+vec3 beam(ivec2 p, float fx) {
+  vec3 c = vec3(0.0);
+  float w = 0.0;
+  for (int i = -1; i <= 2; i++) {
+    float k = gaus(float(i) - fx, 4.0);
+    c += fetch(p + ivec2(i, 0)) * k;
+    w += k;
+  }
+  return c / w;
+}
+void main() {
+  lim = textureSize(frame, 0) - 1;
+  vec2 p = uv * vec2(textureSize(frame, 0)) - 0.5, f = fract(p);
+  ivec2 b = ivec2(floor(p));
+  vec3 c = beam(b, f.x) * gaus(f.y, 8.0) + beam(b + ivec2(0, 1), f.x) * gaus(1.0 - f.y, 8.0);
+  float m = mod(gl_FragCoord.x, 3.0);
+  vec3 mask = vec3(0.8);
+  if (m < 1.0) mask.r = 1.2; else if (m < 2.0) mask.g = 1.2; else mask.b = 1.2;
+  color = vec4(sqrt(c * mask * 1.4), 1.0);
+}`,
+    /* Hyllian's xBR-lv2 (corner C, smooth tips) from libretro/glsl-shaders, adapted here:
+       neighbours are read with texelFetch, and the edge blend follows the output scale.
+
+       Copyright (C) 2011-2016 Hyllian - sergiogdb@gmail.com
+
+       Permission is hereby granted, free of charge, to any person obtaining a copy
+       of this software and associated documentation files (the "Software"), to deal
+       in the Software without restriction, including without limitation the rights
+       to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+       copies of the Software, and to permit persons to whom the Software is
+       furnished to do so, subject to the following conditions:
+
+       The above copyright notice and this permission notice shall be included in
+       all copies or substantial portions of the Software.
+
+       THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+       IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+       FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+       AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+       LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+       OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+       THE SOFTWARE. */
+    xbr: FILTER_HEAD + `
+uniform float scale;
+const float EQ_THRESHOLD = 15.0;
+const float LV2_COEFFICIENT = 2.0;
+const vec3 rgbw = vec3(14.352, 28.176, 5.472);
+const vec4 Ao = vec4(1.0, -1.0, -1.0, 1.0);
+const vec4 Bo = vec4(1.0, 1.0, -1.0, -1.0);
+const vec4 Co = vec4(1.5, 0.5, -0.5, 0.5);
+const vec4 Ax = vec4(1.0, -1.0, -1.0, 1.0);
+const vec4 Bx = vec4(0.5, 2.0, -0.5, -2.0);
+const vec4 Cx = vec4(1.0, 1.0, -0.5, 0.0);
+const vec4 Ay = vec4(1.0, -1.0, -1.0, 1.0);
+const vec4 By = vec4(2.0, 0.5, -2.0, -0.5);
+const vec4 Cy = vec4(2.0, 0.0, -1.0, 0.5);
+const vec4 Ci = vec4(0.25);
+ivec2 ip, lim;
+vec3 px(int x, int y) { return texelFetch(frame, clamp(ip + ivec2(x, y), ivec2(0), lim), 0).rgb; }
+vec4 df(vec4 a, vec4 b) { return abs(a - b); }
+vec4 diff(vec4 a, vec4 b) { return vec4(notEqual(a, b)); }
+vec4 eq(vec4 a, vec4 b) { return step(df(a, b), vec4(EQ_THRESHOLD)); }
+vec4 neq(vec4 a, vec4 b) { return vec4(1.0) - eq(a, b); }
+vec4 wd(vec4 a, vec4 b, vec4 c, vec4 d, vec4 e, vec4 f, vec4 g, vec4 h) {
+  return df(a, b) + df(a, c) + df(d, e) + df(d, f) + 4.0 * df(g, h);
+}
+float c_df(vec3 c1, vec3 c2) { vec3 d = abs(c1 - c2); return d.r + d.g + d.b; }
+void main() {
+  lim = textureSize(frame, 0) - 1;
+  vec2 pos = uv * vec2(textureSize(frame, 0)), fp = fract(pos);
+  ip = ivec2(floor(pos));
+  vec4 delta = vec4(1.0 / scale);
+  vec4 delta_l = vec4(0.5, 1.0, 0.5, 1.0) / scale;
+  vec4 delta_u = delta_l.yxwz;
+
+  vec3 A1 = px(-1, -2), B1 = px(0, -2), C1 = px(1, -2);
+  vec3 A = px(-1, -1), B = px(0, -1), C = px(1, -1);
+  vec3 D = px(-1, 0), E = px(0, 0), F = px(1, 0);
+  vec3 G = px(-1, 1), H = px(0, 1), I = px(1, 1);
+  vec3 G5 = px(-1, 2), H5 = px(0, 2), I5 = px(1, 2);
+  vec3 A0 = px(-2, -1), D0 = px(-2, 0), G0 = px(-2, 1);
+  vec3 C4 = px(2, -1), F4 = px(2, 0), I4 = px(2, 1);
+
+  vec4 b = vec4(dot(B, rgbw), dot(D, rgbw), dot(H, rgbw), dot(F, rgbw));
+  vec4 c = vec4(dot(C, rgbw), dot(A, rgbw), dot(G, rgbw), dot(I, rgbw));
+  vec4 d = b.yzwx;
+  vec4 e = vec4(dot(E, rgbw));
+  vec4 f = b.wxyz;
+  vec4 g = c.zwxy;
+  vec4 h = b.zwxy;
+  vec4 i = c.wxyz;
+  vec4 i4 = vec4(dot(I4, rgbw), dot(C1, rgbw), dot(A0, rgbw), dot(G5, rgbw));
+  vec4 i5 = vec4(dot(I5, rgbw), dot(C4, rgbw), dot(A1, rgbw), dot(G0, rgbw));
+  vec4 h5 = vec4(dot(H5, rgbw), dot(F4, rgbw), dot(B1, rgbw), dot(D0, rgbw));
+  vec4 f4 = h5.yzwx;
+
+  vec4 fx = Ao * fp.y + Bo * fp.x;
+  vec4 fx_l = Ax * fp.y + Bx * fp.x;
+  vec4 fx_u = Ay * fp.y + By * fp.x;
+
+  vec4 irlv0 = diff(e, f) * diff(e, h);
+  vec4 irlv1 = irlv0 * (neq(f, b) * neq(f, c) + neq(h, d) * neq(h, g)
+    + eq(e, i) * (neq(f, f4) * neq(f, i4) + neq(h, h5) * neq(h, i5)) + eq(e, g) + eq(e, c));
+  vec4 irlv2l = diff(e, g) * diff(d, g);
+  vec4 irlv2u = diff(e, c) * diff(b, c);
+
+  vec4 fx45i = clamp((fx + delta - Co - Ci) / (2.0 * delta), 0.0, 1.0);
+  vec4 fx45 = clamp((fx + delta - Co) / (2.0 * delta), 0.0, 1.0);
+  vec4 fx30 = clamp((fx_l + delta_l - Cx) / (2.0 * delta_l), 0.0, 1.0);
+  vec4 fx60 = clamp((fx_u + delta_u - Cy) / (2.0 * delta_u), 0.0, 1.0);
+
+  vec4 wd1 = wd(e, c, g, i, h5, f4, h, f);
+  vec4 wd2 = wd(h, d, i5, f, i4, b, e, i);
+
+  vec4 edri = step(wd1, wd2) * irlv0;
+  vec4 edr = step(wd1 + vec4(0.1), wd2) * step(vec4(0.5), irlv1);
+  vec4 edr_l = step(LV2_COEFFICIENT * df(f, g), df(h, c)) * irlv2l * edr;
+  vec4 edr_u = step(LV2_COEFFICIENT * df(h, c), df(f, g)) * irlv2u * edr;
+
+  fx45 = edr * fx45;
+  fx30 = edr_l * fx30;
+  fx60 = edr_u * fx60;
+  fx45i = edri * fx45i;
+
+  vec4 near = step(df(e, f), df(e, h));
+  vec4 maximos = max(max(fx30, fx60), max(fx45, fx45i));
+
+  vec3 res1 = E;
+  res1 = mix(res1, mix(H, F, near.x), maximos.x);
+  res1 = mix(res1, mix(B, D, near.z), maximos.z);
+  vec3 res2 = E;
+  res2 = mix(res2, mix(F, B, near.y), maximos.y);
+  res2 = mix(res2, mix(D, H, near.w), maximos.w);
+  color = vec4(mix(res1, res2, step(c_df(E, res1), c_df(E, res2))), 1.0);
+}`,
+  };
+
+  // The button shows the filter in use; every label gets the same box so it doesn't jump.
+  function drawFilter() {
+    const label = FILTER_LABELS[filter];
+    const w = Math.max(...FILTERS.map((f) => textW(FILTER_LABELS[f]))) + 6, h = 14;
+    const ctx = sizeCanvas(filterCv, w, h);
+    ctx.fillStyle = C.text;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = C.panel;
+    ctx.fillRect(1, 1, w - 2, h - 2);
+    drawText(ctx, label, Math.floor((w - textW(label)) / 2), 2, filter === "off" ? C.body : C.hot, C.ink);
+    filterBtn.setAttribute("aria-label", "Picture filter: " + FILTER_NAMES[filter]);
+  }
+
+  function setupFilter(ci) {
+    if (filterReady) return;
+    filterReady = true;
+    const canvases = [...document.querySelectorAll("#jsdos canvas")];
+    const jsCv = canvases.find((c) => c.width === ci.width() && c.height === ci.height()) || canvases[0];
+    const gl = screenCv.getContext("webgl2", { alpha: false, antialias: false, depth: false, stencil: false });
+    if (!jsCv || !gl) return;
+    // Software WebGL (no usable GPU) would run these shaders on the CPU the emulator needs, and
+    // OMF crashes with a runtime error when it starves. There js-dos keeps drawing, as it is cheap.
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+    if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)) return;
+
+    const programs = {};
+    const program = (name) => {
+      if (name in programs) return programs[name];
+      programs[name] = null;
+      try {
+        const p = gl.createProgram();
+        for (const [type, src] of [[gl.VERTEX_SHADER, FILTER_VS], [gl.FRAGMENT_SHADER, FILTER_FS[name]]]) {
+          const s = gl.createShader(type);
+          gl.shaderSource(s, src);
+          gl.compileShader(s);
+          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+          gl.attachShader(p, s);
+        }
+        gl.bindAttribLocation(p, 0, "pos");
+        gl.linkProgram(p);
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+        gl.useProgram(p);
+        gl.uniform1i(gl.getUniformLocation(p, "frame"), 0);
+        programs[name] = { p, scale: gl.getUniformLocation(p, "scale") };
+      } catch (e) {
+        console.warn("Picture filter " + name + " unavailable:", e);
+      }
+      return programs[name];
+    };
+    // Next filter that compiles on this device, starting with the given one.
+    const usable = (from) => {
+      for (let i = 0; i < FILTERS.length; i++) {
+        const f = FILTERS[(FILTERS.indexOf(from) + i) % FILTERS.length];
+        if (program(f)) return f;
+      }
+      return null;
+    };
+    if (!(filter = usable(filter))) return;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+
+    // js-dos hands every listener the same frame buffer (RGB, updated in place); upload it at most
+    // once per display frame.
+    let frame = null, fresh = false, texW = 0, texH = 0, texFmt = 0;
+    let live = true, shown = false, redraw = true, boxL = 0, boxT = 0, boxW = 0, boxH = 0;
+    ci.events().onFrame((rgb, rgba) => { frame = rgb || rgba; fresh = true; });
+
+    const stop = () => {
+      live = false;
+      screenCv.hidden = true;
+      jsCv.style.visibility = "";
+      filterBtn.hidden = true;
+    };
+    screenCv.addEventListener("webglcontextlost", stop);
+
+    const render = () => {
+      if (!live) return;
+      requestAnimationFrame(render);
+      // Follow js-dos's canvas: it already has the place and aspect the page asked for.
+      const r = jsCv.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return;
+      if (r.left !== boxL || r.top !== boxT || r.width !== boxW || r.height !== boxH) {
+        boxL = r.left; boxT = r.top; boxW = r.width; boxH = r.height;
+        Object.assign(screenCv.style, { left: boxL + "px", top: boxT + "px", width: boxW + "px", height: boxH + "px" });
+      }
+      // Device pixels, capped so a 4K screen doesn't cost four times the GPU work of a 1080p one.
+      const k = Math.min(devicePixelRatio || 1, 2560 / r.width, 1600 / r.height);
+      const w = Math.round(r.width * k), h = Math.round(r.height * k);
+      if (screenCv.width !== w || screenCv.height !== h) {
+        screenCv.width = w;
+        screenCv.height = h;
+        redraw = true;
+      }
+      if (fresh && frame) {
+        fresh = false;
+        const fw = ci.width(), fh = ci.height(), ch = frame.length / (fw * fh);
+        if (ch === 3 || ch === 4) { // otherwise the size just changed and this buffer is the old one
+          const fmt = ch === 3 ? gl.RGB : gl.RGBA;
+          if (fw !== texW || fh !== texH || fmt !== texFmt) {
+            gl.texImage2D(gl.TEXTURE_2D, 0, ch === 3 ? gl.RGB8 : gl.RGBA8, fw, fh, 0, fmt, gl.UNSIGNED_BYTE, frame);
+            texW = fw;
+            texH = fh;
+            texFmt = fmt;
+          } else {
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fw, fh, fmt, gl.UNSIGNED_BYTE, frame);
+          }
+          redraw = true;
+        }
+      }
+      if (!redraw || !texW) return;
+      redraw = false;
+      const prog = programs[filter];
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(prog.p);
+      if (prog.scale) gl.uniform1f(prog.scale, Math.min(w / texW, h / texH));
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      if (!shown) { // hand over only once there is a picture to show
+        shown = true;
+        screenCv.hidden = false;
+        jsCv.style.visibility = "hidden";
+      }
+    };
+
+    const next = () => {
+      filter = usable(FILTERS[(FILTERS.indexOf(filter) + 1) % FILTERS.length]);
+      try { localStorage.setItem("omf2097.filter", filter); } catch {}
+      drawFilter();
+      redraw = true;
+    };
+    filterBtn.addEventListener("click", next);
+    // F9 switches the filter; the game never sees it.
+    addEventListener("keydown", (e) => {
+      if (e.key !== "F9") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (!e.repeat) next();
+    }, true);
+    addEventListener("keyup", (e) => { if (e.key === "F9") e.stopImmediatePropagation(); }, true);
+
+    drawFilter();
+    filterBtn.hidden = false;
+    requestAnimationFrame(render);
   }
 
   const actions = {
