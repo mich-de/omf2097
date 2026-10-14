@@ -2,7 +2,27 @@
 
 Tooling per impacchettare ed eseguire *One Must Fall 2097* (1994, Epic MegaGames / Diversions Entertainment) tramite [js-dos](https://js-dos.com/) / DOSBox-X, sia headless (Node) che in un vero browser.
 
-**Questo repo non contiene i file del gioco.** Servono i tuoi file originali, posseduti legalmente, estratti e installati dentro `installed_game/` (ignorata da git).
+**Repo privato.** Contiene anche i file originali del gioco (`extracted/`, `installed_game/`, ...) come backup personale — non redistribuirli, restano protetti da copyright nonostante l'età.
+
+## Cosa è stato fatto
+
+Obiettivo: far girare OMF2097 dentro un bundle `omf2097.jsdos` (js-dos/DOSBox-X), verificato sia headless sia in un browser vero.
+
+1. **Bug nascosto nei test headless.** `fs.readFileSync` di Node restituisce i file piccoli come viste su un pool di memoria condiviso; `emulators` (il backend di js-dos per Node) scrive l'intero buffer sottostante nel filesystem DOS emulato, corrompendo circa 40 file su 98 (diventavano tutti lo stesso blob da 65600 byte). Risultato: schermo nero e un flood dell'eccezione CPU "divide by zero" — sembrava un crash del gioco, era un bug del test. Fix: copiare sempre i contenuti in un `Uint8Array` proprio prima di passarli all'emulatore (`probe_fs.js` verifica questo automaticamente).
+2. **Bug vero.** Con i file integri, il gioco si avviava ma usciva subito con `Please run SETUP.EXE before running OMF.EXE`: il driver audio `MDRV004R.MUS` preso dall'installer non era configurato (manca l'impostazione scheda sonora). Sostituito con la versione configurata (base 220, IRQ 7, DMA 1) ottenuta facendo girare `SETUP.EXE` fino in fondo.
+3. **Reverse engineering (REA + Ghidra).** Per isolare il primo bug è stato usato [REA](https://github.com/morluto/rea) con provider Ghidra 12.1.4 per decompilare il launcher `OMF.EXE` (Turbo Pascal, DOS MZ a 16 bit) — ha confermato che il codice del launcher non aveva alcuna `DIV` raggiungibile in quel punto, il che ha spostato il sospetto dal codice ai dati effettivamente caricati, portando al bug #1.
+4. **Boot in un browser vero.** I test headless usano `emulators` (`dosboxNode`) direttamente, non il player js-dos reale. Verificato anche in Chrome vero (headless, pilotato via Chrome DevTools Protocol con `cdp_shot.js`, dato che non c'erano Puppeteer/Playwright installati — usato il `WebSocket` nativo di Node) cliccando il tasto play della UI js-dos.
+5. **Avvio automatico e schermo intero.** Aggiunte le opzioni del player js-dos v8 `autoStart` (parte senza click), `fullScreen` (richiede comunque un gesto reale dell'utente per policy browser) e `kiosk` (nasconde i controlli).
+6. **16:9 senza distorsioni.** Provati `renderAspect: "4/3"` (pillarbox, barre nere, nessuna distorsione) e `"16/9"` (riempie ma stira l'immagine). Verificato che un rapporto fisso lascia barre a meno che la finestra non sia *esattamente* in quel rapporto — `"Fit"` invece riempie sempre il contenitore, qualunque sia la sua forma reale, ed è l'impostazione finale usata.
+7. **Scartato OpenOMF** (motore open source alternativo) per ottenere "vero" 16:9: gli sfondi del gioco sono immagini fisse renderizzate nel 1994, non c'è altro campo visivo da rivelare ai lati. Dalla cronologia issue del progetto stesso, anche lì le uniche due opzioni sono stretch o pillarbox — stesso risultato ottenibile in 5 minuti con js-dos, niente ore di build con Docker/Emscripten.
+
+## Screenshot
+
+| | |
+|---|---|
+| ![Titolo](screenshots/OK_title_2097.png) Logo del gioco (boot headless) | ![Boot in Chrome](screenshots/OK_browser_boot.png) Boot in Chrome vero (CDP) |
+| ![Pillarbox](screenshots/OK_pillarbox_16-9.png) `renderAspect: "4/3"` — pillarbox, nessuna distorsione | ![Stretch](screenshots/CONFRONTO_stretch_16-9.png) `renderAspect: "16/9"` — riempie ma stira |
+| ![Fit](screenshots/OK_fit_no_bars.png) `renderAspect: "Fit"` — riempie sempre, nessuna barra | |
 
 ## Setup
 
