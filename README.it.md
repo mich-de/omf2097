@@ -32,6 +32,7 @@ Nessuna installazione: apri **https://mich-de.github.io/omf2097/**, scegli **Reg
 - **Immagine:** su telefono e tablet la grafica è smussata con xBR di default; su desktop il filtro parte spento. `F9` o il tasto del filtro alternano **OFF** (i pixel originali), **XBR** e **CRT** (scanline, come un monitor del 1994), e la pagina ricorda la scelta.
 - **Nova:** nella schermata di selezione dei robot di una partita a un giocatore compare la casella **+ NOVA** (desktop, oppure premi `N`) o il tasto **PLAY WITH NOVA** sopra KICK (telefono). La pagina esegue per te il trucco originale e seleziona Nova, con qualsiasi dei dieci piloti. In una partita a due il giocatore 2 deve ancora fare il trucco a mano.
 - **Uscire:** scegli **QUIT** nel menu principale del gioco (`Esc` ci porta il cursore) e la pagina torna alla schermata iniziale.
+- **Reti aziendali:** filtri web come Zscaler possono interrompere il download, perché il bundle è un archivio pieno di programmi DOS. La pagina allora lo dice e propone di riprovare; la soluzione è un'altra rete, oppure chiedere all'IT di sbloccare `mich-de.github.io`.
 
 One Must Fall 2097 è freeware dal 1999. Questo repo è anche il sito: GitHub Pages lo serve direttamente dalla radice.
 
@@ -80,6 +81,7 @@ Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` a
 12. **Uscire riporta a casa.** DOSBox-X segnala la modalità testo come larga 720 pixel. Dopo l'avvio del gioco, più di 1,5 s di modalità testo vogliono dire che è tornato a DOS (la schermata degli ordini e il prompt), quindi la pagina ricarica il launcher.
 13. **Schermo intero, nel verso giusto.** Sui telefoni l'avvio del gioco chiede lo schermo intero e blocca l'orizzontale; un tasto sotto ESC lo attiva e disattiva dopo. Su desktop i tasti di schermo intero e filtro stanno in alto a sinistra e spariscono quando il mouse si ferma.
 14. **Nova con ogni pilota.** Il ritratto del robot scelto prende i colori del pilota, e alcuni schemi sono spenti: con Christian la saturazione arriva solo a 28–35, quindi la casella non compariva mai, e con altri piloti lampeggiava. Ora la pagina si basa sugli altri nove ritratti: nessun colore e, in media, né neri né bianchi, il che tiene fuori anche dissolvenze, menu scuri e i lampi bianchi dell'intro. Provato con tutti e dieci i piloti.
+15. **Dire cosa è andato storto.** Dietro un filtro web aziendale il download poteva morire a metà ("connection reset") o diventare la pagina 403 del filtro, e il launcher restava su LOADING ARENA. Ora la pagina controlla i propri download (bundle, WebAssembly, script). Una connessione caduta, un 403, una pagina HTML al posto del file o 30 secondi senza ricevere nulla aprono il pannello **Download interrupted**, che spiega cosa è successo e propone di riprovare. Ogni caso è stato simulato tramite il DevTools Protocol, più un server di prova che taglia il bundle dopo 1 MB.
 
 ## Fatto con
 

@@ -32,6 +32,7 @@ No install needed: open **https://mich-de.github.io/omf2097/**, pick **Regular G
 - **Picture:** phones and tablets smooth the pixel art with xBR by default; on desktop the filter starts off. `F9` or the filter button cycles **OFF** (the raw pixels), **XBR** and **CRT** (scanlines, like a 1994 monitor), and the page remembers your choice.
 - **Nova:** on the robot selection screen of a one-player game, a **+ NOVA** tile (desktop, or press `N`) or a **PLAY WITH NOVA** button above KICK (phone) appears. The page performs the original cheat for you and picks Nova, with any of the ten pilots. In a two-player game player 2 still has to do the cheat by hand.
 - **Leaving:** pick **QUIT** in the game's main menu (`Esc` jumps to it) and the page goes back to the start screen.
+- **Company networks:** web filters such as Zscaler may cut the download, since the bundle is an archive full of DOS programs. The page then says so and offers to try again; the fix is another network, or asking IT to allow `mich-de.github.io`.
 
 One Must Fall 2097 has been freeware since 1999. This repo is also the site: GitHub Pages serves it straight from the root.
 
@@ -80,6 +81,7 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 12. **Quitting returns home.** DOSBox-X reports text mode as 720 pixels wide. Once the game has started, more than 1.5 s of text mode means it quit to DOS (its order screen and the prompt), so the page reloads to the launcher.
 13. **Full screen, the right way round.** On phones, starting the game asks for full screen and locks landscape; a button under ESC toggles it later. On desktop the full screen and filter buttons sit top left and fade out when the mouse stops moving.
 14. **Nova with every pilot.** The chosen robot's portrait takes the pilot's colours, and some schemes are dull: with Christian its saturation is only 28–35, so the tile never showed, and with other pilots it blinked. The page now leans on the other nine portraits instead: no colour at all, and on average neither black nor white, which also keeps fades, dark menus and the intro's white flashes out. Checked with all ten pilots.
+15. **Saying what went wrong.** Behind a company web filter the download could die halfway ("connection reset") or turn into the filter's 403 page, and the launcher just kept saying LOADING ARENA. The page now watches its own downloads (bundle, WebAssembly, scripts). A dropped connection, a 403, an HTML page in place of the file, or 30 seconds without a byte bring up a **Download interrupted** panel that explains what happened and offers to try again. Each case was simulated through the DevTools Protocol, plus a test server that cuts the bundle after 1 MB.
 
 ## Built with
 

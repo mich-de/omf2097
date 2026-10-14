@@ -311,6 +311,16 @@
       ],
       buttons: [{ label: "< Back" }, { label: "js-dos.com >", href: "https://js-dos.com/" }],
     },
+    blocked: {
+      title: "Download interrupted",
+      width: 288,
+      modal: true,
+      paras: [
+        "The game files did not arrive: the connection was cut while they were downloading.",
+        "Company networks often do this. Web filters such as Zscaler block archives with DOS programs inside. Try another network or your phone, or ask IT to allow mich-de.github.io.",
+      ],
+      buttons: [{ label: "Try again", action: () => location.reload() }],
+    },
   };
   let panelKey = null, panelSel = 0, panelHits = [];
 
@@ -384,7 +394,7 @@
       el.className = "hit";
       el.textContent = b.label;
       if (b.href) { el.href = b.href; el.target = "_blank"; el.rel = "noopener"; }
-      else { el.type = "button"; el.addEventListener("click", closePanel); }
+      else { el.type = "button"; el.addEventListener("click", b.action || closePanel); }
       el.addEventListener("mouseenter", () => { panelSel = i; layoutPanel(); });
       el.addEventListener("focus", () => { panelSel = i; layoutPanel(); });
       panel.appendChild(el);
@@ -434,6 +444,7 @@
       const fs = document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
       (fs || Promise.reject()).then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
     }
+    watchDownloads();
     freshBundleUrl().then((url) => Dos(document.getElementById("jsdos"), {
       url,
       pathPrefix: "js-dos/emulators/",
@@ -453,7 +464,7 @@
           const text = ci.width() === 720;
           if (!playing) {
             if (text) sawText = true;
-            else if (sawText) { playing = true; reveal(); setupFilter(ci); }
+            else if (sawText) { playing = gameStarted = true; reveal(); setupFilter(ci); }
           } else if (!text) {
             textSince = 0;
           } else if (!textSince) {
@@ -465,7 +476,94 @@
         }, 250);
       },
     }));
-    setTimeout(reveal, 30000);
+    setTimeout(() => { if (!downloadFailed) reveal(); }, 30000);
+  }
+
+  // ---------- download problems ----------
+  // Company web filters (Zscaler and the like) can cut the game's downloads: the bundle is a zip full
+  // of DOS programs and the emulator is 8 MB of WebAssembly. js-dos would then stop on a terse error
+  // behind the launcher, so the page watches those downloads itself and says what happened.
+  let downloadFailed = false, gameStarted = false, inFlight = 0, lastBytes = 0;
+  function downloadProblem() {
+    if (downloadFailed) return;
+    downloadFailed = true;
+    clearInterval(blinkTimer);
+    loading.hidden = true;
+    launcher.classList.remove("off");
+    launcher.inert = false;
+    openPanel("blocked");
+  }
+  function watchDownloads() {
+    const ours = (url) => {
+      try {
+        const u = new URL(url, location.href);
+        return u.origin === location.origin && /\.(jsdos|wasm|js)$/.test(u.pathname);
+      } catch {
+        return false;
+      }
+    };
+    const pageFetch = window.fetch;
+    window.fetch = async (input, init) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input?.url;
+      if (!ours(url)) return pageFetch(input, init);
+      let open = true;
+      const done = () => { if (open) { open = false; inFlight--; } };
+      inFlight++;
+      lastBytes = Date.now();
+      let res;
+      try {
+        res = await pageFetch(input, init);
+      } catch (e) {
+        done();
+        downloadProblem();
+        throw e;
+      }
+      // A filter's own page instead of the file: a 403 "blocked", or HTML such as "scanning, please wait".
+      const page = !res.ok || /text\/html/i.test(res.headers.get("Content-Type") || "");
+      if (page || !res.body) {
+        done();
+        if (page) downloadProblem();
+        return res;
+      }
+      // Hand the body on unchanged, noticing a connection that drops halfway.
+      const reader = res.body.getReader();
+      return new Response(new ReadableStream({
+        async pull(out) {
+          try {
+            const chunk = await reader.read();
+            lastBytes = Date.now();
+            if (chunk.done) { done(); out.close(); } else out.enqueue(chunk.value);
+          } catch (e) {
+            done();
+            downloadProblem();
+            out.error(e);
+          }
+        },
+        cancel: (why) => { done(); return reader.cancel(why); },
+      }), { status: res.status, statusText: res.statusText, headers: res.headers });
+    };
+    const xhrOpen = XMLHttpRequest.prototype.open, xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.omfUrl = String(url);
+      return xhrOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (ours(this.omfUrl)) {
+        inFlight++;
+        lastBytes = Date.now();
+        this.addEventListener("progress", () => { lastBytes = Date.now(); });
+        this.addEventListener("loadend", () => {
+          inFlight--;
+          if (this.status === 0 || this.status >= 400) downloadProblem();
+        });
+      }
+      return xhrSend.apply(this, arguments);
+    };
+    // A filter may also hold a big file while it scans it: no bytes for 30 s with a download open.
+    const stall = setInterval(() => {
+      if (gameStarted || downloadFailed) clearInterval(stall);
+      else if (inFlight > 0 && Date.now() - lastBytes > 30000) downloadProblem();
+    }, 5000);
   }
 
   // js-dos keeps every downloaded bundle in OPFS (jsdos/caches/bundles), keyed by its URL, and
@@ -1218,7 +1316,7 @@ void main() {
   };
 
   launcher.addEventListener("click", (e) => {
-    if (panelKey && !panel.contains(e.target) && !menu.contains(e.target)) closePanel();
+    if (panelKey && !PANELS[panelKey].modal && !panel.contains(e.target) && !menu.contains(e.target)) closePanel();
   });
   document.addEventListener("keydown", (e) => {
     if (started) return;
