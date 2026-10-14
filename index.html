@@ -381,8 +381,8 @@
       const fs = document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
       (fs || Promise.reject()).then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
     }
-    Dos(document.getElementById("jsdos"), {
-      url: "omf2097.jsdos",
+    freshBundleUrl().then((url) => Dos(document.getElementById("jsdos"), {
+      url,
       pathPrefix: "js-dos/emulators/",
       backend: "dosboxX",
       autoStart: true,
@@ -400,8 +400,31 @@
           else if (sawText) { clearInterval(poll); reveal(); }
         }, 250);
       },
-    });
+    }));
     setTimeout(reveal, 30000);
+  }
+
+  // js-dos keeps every downloaded bundle in OPFS (jsdos/caches/bundles), keyed by its URL, and
+  // never checks it again, so an updated omf2097.jsdos would never reach returning players.
+  // Versioning the URL with the server's ETag gives each new bundle a new key; older copies
+  // are removed so they don't pile up.
+  const BUNDLE = "omf2097.jsdos";
+  async function freshBundleUrl() {
+    let url = BUNDLE;
+    try {
+      const r = await fetch(BUNDLE, { method: "HEAD", cache: "no-cache" });
+      const v = (r.headers.get("ETag") || r.headers.get("Last-Modified") || "").replace(/[^A-Za-z0-9]/g, "");
+      if (r.ok && v) url = BUNDLE + "?v=" + v;
+    } catch {}
+    try {
+      const key = url.replace(/[^a-zA-Z0-9._-]/g, "_"); // js-dos's cache file name for this URL
+      let dir = await navigator.storage.getDirectory();
+      for (const name of ["jsdos", "caches", "bundles"]) dir = await dir.getDirectoryHandle(name);
+      const stale = [];
+      for await (const name of dir.keys()) if (name.startsWith(BUNDLE) && name !== key) stale.push(name);
+      for (const name of stale) await dir.removeEntry(name);
+    } catch {}
+    return url;
   }
   function reveal() {
     if (revealed) return;
