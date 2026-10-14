@@ -711,26 +711,32 @@
     });
   }
 
-  // Slot under player 1's cursor (0-9), or -1 when this is not the robot screen:
-  // there the chosen portrait is in colour and the other nine are pure grey.
+  // Slot under player 1's cursor (0-9), or -1 when this is not the robot screen: there the chosen
+  // portrait is in colour and the other nine are grey robots. The colour comes from the pilot's
+  // scheme and some are dull (saturation down to ~28), so the test leans on the grey ones instead:
+  // no colour at all, and on average neither black nor white, which rules out fades, dark menus
+  // and the intro's white flashes.
   async function readCursor() {
     const img = await gameCi.screenshot();
     const data = img.data || img, w = img.width || gameCi.width(), h = img.height || gameCi.height();
     let pick = -1;
     for (let s = 0; s < 10; s++) {
       const [x0, x1] = SLOT_COLS[s % 5], [y0, y1] = SLOT_ROWS[Math.floor(s / 5)];
-      let sat = 0;
+      let sat = 0, lum = 0;
       for (let fy = 4; fy < 9; fy++) {
         for (let fx = 2; fx < 9; fx++) {
           const i = (Math.floor((y0 + (y1 - y0) * fy / 10) * h) * w + Math.floor((x0 + (x1 - x0) * fx / 10) * w)) * 4;
-          sat += Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]);
+          const top = Math.max(data[i], data[i + 1], data[i + 2]);
+          sat += top - Math.min(data[i], data[i + 1], data[i + 2]);
+          lum += top;
         }
       }
       sat /= 35;
-      if (sat > 60) {
+      lum /= 35;
+      if (sat > 15) {
         if (pick >= 0) return -1;
         pick = s;
-      } else if (sat > 6) {
+      } else if (sat >= 6 || lum < 25 || lum > 160) {
         return -1;
       }
     }
