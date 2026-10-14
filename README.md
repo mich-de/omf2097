@@ -28,6 +28,7 @@ No install needed: open **https://mich-de.github.io/omf2097/**, pick **Regular G
 
 - **Desktop:** the game fills the window. Arrow keys to move, `Enter` to punch, `Right Shift` to kick, `Esc` for the menu. `F11` for true full screen.
 - **Phone and tablet:** an on-screen pad appears with **PUNCH**, **KICK** and **ESC**. Starting the game asks for landscape full screen where the browser allows it (Android does, iPhone doesn't).
+- **Nova:** on the robot selection screen a **+ NOVA** tile appears (or press `N`). The page performs the original cheat for you and picks Nova.
 - **Leaving:** pick **QUIT** in the game's main menu (`Esc` jumps to it) and the page goes back to the start screen.
 
 One Must Fall 2097 has been freeware since 1999. This repo is also the site: GitHub Pages serves it straight from the root.
@@ -59,6 +60,7 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 6. **A launcher in the game's own style.** The page uses `NETMEGA.PCX` as its background, draws its lettering pixel by pixel with the `NETFONT1.PCX` bitmap font and the original colours, and builds its info panels on the `NETSET.PCX` blue grid. It stays up through the DOS boot text and hands over when the game switches to graphics.
 7. **Touch controls that speak the game's language.** The pad and buttons send exactly the keys player 1 is bound to in `SETUP.CFG`: arrows plus the keypad diagonals, `Enter` to punch, `Right Shift` to kick. On touch screens the game keeps 4:3 so the controls sit in the side bands.
 8. **Settings at their best.** Game speed now defaults to 50% (`SETUP.CFG` byte 0; 100% was far too fast). Sound moved from a mono Sound Blaster setup that clipped to Gravis Ultrasound stereo, configured with the game's own `SETUP.EXE`. The emulator runs at `cycles=max`.
+9. **Nova without the cheat.** The robot grid has ten fixed slots and Nova has none: the only way in is the original cheat (visit all ten slots, press Down 11+ times on Katana, pick Flail). The page recognises the robot screen (one portrait in colour, nine in grey), and the NOVA tile replays the cheat, reading the cursor from the screen after every key so it works from any starting position.
 
 ## Screenshots
 

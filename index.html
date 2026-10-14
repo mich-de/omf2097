@@ -96,6 +96,20 @@
     position: absolute; right: calc(env(safe-area-inset-right) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px);
     display: flex; flex-direction: column; align-items: center; gap: 10px;
   }
+
+  /* NOVA tile: shown only on the robot selection screen. */
+  #nova {
+    position: fixed; z-index: 21;
+    top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px);
+    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  #nova[hidden] { display: none; }
+  #nova:focus { outline: none; }
+  #nova canvas {
+    display: block; image-rendering: pixelated;
+    width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
+  }
 </style>
 </head>
 <body>
@@ -117,6 +131,7 @@
   <canvas id="pad"></canvas>
   <div id="fight"><canvas id="kick"></canvas><canvas id="punch"></canvas></div>
 </div>
+<button id="nova" type="button" hidden aria-label="Play as Nova"><canvas aria-hidden="true"></canvas></button>
 
 <script>
 (() => {
@@ -245,7 +260,7 @@
         ["Menus", "Arrows, Enter, Esc"],
         ["Full screen", "F11"],
         ["Touch", "On-screen pad"],
-        ["Download", "About 15 MB"],
+        ["Nova", "N on robot screen"],
       ],
       buttons: [{ label: "< Back" }],
     },
@@ -444,6 +459,7 @@
     launcher.classList.add("off");
     launcher.inert = true;
     if (touch) showTouch();
+    watchForRobotScreen();
   }
 
   // ---------- touch controls ----------
@@ -611,6 +627,120 @@
     document.addEventListener("visibilitychange", () => { if (document.hidden) releaseAll(); });
     layoutTouch();
     touchEl.hidden = false;
+  }
+
+  // ---------- NOVA ----------
+  // The robot grid has ten fixed slots; Nova is only reachable through the original cheat:
+  // visit all ten slots, press Down 11+ times on Katana, then pick Flail. The tile does that,
+  // reading the cursor from the screen after every key so a doubled move can't derail it.
+  const novaBtn = document.getElementById("nova");
+  const novaCv = novaBtn.querySelector("canvas");
+  // Robot portraits as fractions of the frame (measured on the 640x480 robot screen).
+  const SLOT_COLS = [[22, 124], [146, 250], [270, 372], [394, 498], [518, 622]].map(([a, b]) => [a / 640, b / 640]);
+  const SLOT_ROWS = [[275, 355], [377, 460]].map(([a, b]) => [a / 480, b / 480]);
+  const KATANA = 5, FLAIL = 7;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let novaBusy = false;
+
+  function drawNova(busy) {
+    const label = "+ NOVA";
+    const w = textW(label) + 8, h = 14;
+    const ctx = sizeCanvas(novaCv, w, h);
+    ctx.fillStyle = busy ? C.hot : C.text;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = busy ? PRESSED_FILL : C.panel;
+    ctx.fillRect(1, 1, w - 2, h - 2);
+    drawText(ctx, label, 4, 2, busy ? C.hot : C.label, C.ink);
+  }
+
+  // Slot under player 1's cursor (0-9), or -1 when this is not the robot screen:
+  // there the chosen portrait is in colour and the other nine are pure grey.
+  async function readCursor() {
+    const img = await gameCi.screenshot();
+    const data = img.data || img, w = img.width || gameCi.width(), h = img.height || gameCi.height();
+    let pick = -1;
+    for (let s = 0; s < 10; s++) {
+      const [x0, x1] = SLOT_COLS[s % 5], [y0, y1] = SLOT_ROWS[Math.floor(s / 5)];
+      let sat = 0;
+      for (let fy = 4; fy < 9; fy++) {
+        for (let fx = 2; fx < 9; fx++) {
+          const i = (Math.floor((y0 + (y1 - y0) * fy / 10) * h) * w + Math.floor((x0 + (x1 - x0) * fx / 10) * w)) * 4;
+          sat += Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]);
+        }
+      }
+      sat /= 35;
+      if (sat > 60) {
+        if (pick >= 0) return -1;
+        pick = s;
+      } else if (sat > 6) {
+        return -1;
+      }
+    }
+    return pick;
+  }
+
+  async function pickNova() {
+    if (novaBusy || !gameCi) return;
+    novaBusy = true;
+    drawNova(true);
+    try {
+      let s = await readCursor();
+      if (s < 0) return;
+      const seen = new Set([s]);
+      const tap = async (code, gap) => {
+        gameCi.sendKeyEvent(code, true);
+        await sleep(60);
+        gameCi.sendKeyEvent(code, false);
+        await sleep(gap);
+      };
+      const step = async (code) => {
+        await tap(code, 220);
+        s = await readCursor();
+        if (s < 0) throw new Error("not on the robot screen any more");
+        seen.add(s);
+      };
+      const rowDone = () => [0, 1, 2, 3, 4].every((c) => seen.has(5 * Math.floor(s / 5) + c));
+      for (let i = 0; i < 12 && !rowDone(); i++) await step(KEY.left);
+      await step(s < 5 ? KEY.down : KEY.up);
+      for (let i = 0; i < 12 && !rowDone(); i++) await step(KEY.left);
+      if (s < 5) await step(KEY.down);
+      for (let i = 0; i < 8 && s !== KATANA; i++) await step(KEY.left);
+      if (s !== KATANA) return;
+      for (let i = 0; i < 25; i++) await tap(KEY.down, 90);
+      for (let i = 0; i < 6 && s !== FLAIL; i++) await step(KEY.right);
+      if (s === FLAIL) await tap(KEY.enter, 0);
+    } catch {
+      // the screen changed under us; just stop
+    } finally {
+      novaBusy = false;
+      drawNova(false);
+    }
+  }
+
+  function watchForRobotScreen() {
+    const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
+    novaBtn.style.setProperty("--t", t + "px");
+    drawNova(false);
+    novaBtn.addEventListener("click", pickNova);
+    // N picks Nova while the tile is up; elsewhere N still reaches the game (e.g. typing names).
+    let nTaken = false;
+    addEventListener("keydown", (e) => {
+      if ((e.key !== "n" && e.key !== "N") || novaBtn.hidden) return;
+      nTaken = true;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      pickNova();
+    }, true);
+    addEventListener("keyup", (e) => {
+      if ((e.key === "n" || e.key === "N") && nTaken) {
+        nTaken = false;
+        e.stopImmediatePropagation();
+      }
+    }, true);
+    setInterval(async () => {
+      if (novaBusy || !gameCi) return;
+      try { novaBtn.hidden = (await readCursor()) < 0; } catch { novaBtn.hidden = true; }
+    }, 600);
   }
 
   const actions = {
