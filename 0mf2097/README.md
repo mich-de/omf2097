@@ -2,9 +2,11 @@
 
 # ONE MUST FALL 2097
 
-### Il classico picchiaduro di robot del 1994, nel tuo browser
+### The 1994 robot fighting classic, in your browser
 
-[![▶ GIOCA ONLINE](https://img.shields.io/badge/%E2%96%B6_GIOCA_ONLINE-mich--de.github.io%2F0mf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/0mf2097/)
+**English** · [Italiano](README.it.md)
+
+[![▶ PLAY ONLINE](https://img.shields.io/badge/%E2%96%B6_PLAY_ONLINE-mich--de.github.io%2F0mf2097-ff6d2e?style=for-the-badge)](https://mich-de.github.io/0mf2097/)
 
 **▶ [https://mich-de.github.io/0mf2097/](https://mich-de.github.io/0mf2097/)**
 
@@ -12,11 +14,11 @@
 
 ---
 
-Apri il link, clicca **▶ GIOCA** e attendi il download (~15 MB). Il gioco gira in DOSBox-X (WebAssembly) tramite [js-dos](https://js-dos.com/).
+Open the link, click **▶ GIOCA** and wait for the download (~15 MB). The game runs in DOSBox-X (WebAssembly) via [js-dos](https://js-dos.com/).
 
-- **Controlli giocatore 1:** frecce + `Invio` / `Shift destro`
-- **Schermo intero:** `F11`
+- **Player 1 controls:** arrow keys + `Enter` / `Right Shift`
+- **Full screen:** `F11`
 
-One Must Fall 2097 è stato rilasciato come freeware da Epic MegaGames / Diversions Entertainment nel 1999.
+One Must Fall 2097 was released as freeware by Epic MegaGames / Diversions Entertainment in 1999.
 
-Questo repo contiene solo il sito pubblicato su GitHub Pages; è generato automaticamente dalla cartella `0mf2097/` del progetto di sviluppo.
+This repo only contains the site published on GitHub Pages. It is generated from the `0mf2097/` folder of the development project.
