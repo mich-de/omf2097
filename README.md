@@ -94,6 +94,26 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 | Chrome DevTools Protocol, over Node's built-in `WebSocket` | Headless Chrome tests: keys, touches, screenshots, network logs, performance |
 | WebDriver BiDi | The same measurements in headless Firefox |
 | ImageMagick, Python `zipfile` | Screenshots and comparisons; patching `dosbox.conf` inside the bundle |
+| [fontTools](https://github.com/fonttools/fonttools) | Turning the game's bitmap fonts into TTF and WOFF2 |
+
+## The game's fonts, as real font files
+
+<img src="assets/fonts/specimen.png" alt="The three OMF 2097 pixel fonts rendered in Chrome" width="820">
+
+The game's bitmap fonts, converted to TTF and WOFF2 in [`assets/fonts/`](assets/fonts/). Each pixel is a square outline, so they stay crisp at their cell size and whole multiples of it.
+
+| Font | From | Cell | Characters |
+|---|---|---|---|
+| **OMF 2097 NetArena** | `NETFONT1.PCX`, the NetArena lettering of the launcher | 9 px, proportional | ASCII |
+| **OMF 2097 Big** | `GRAPHCHR.DAT`, the game's menu and HUD font | 8x8 px | ASCII + code page 437 letters and symbols |
+| **OMF 2097 Small** | `CHARSMAL.DAT`, the game's small font | 6x6 px | ASCII (capitals only) + code page 437 letters |
+
+```css
+@font-face { font-family: "OMF 2097 Big"; src: url(assets/fonts/omf2097-big.woff2) format("woff2"); }
+h1 { font: 32px "OMF 2097 Big"; } /* 4 x 8 px: every pixel lands on whole screen pixels */
+```
+
+Rebuild them with `pip install fonttools brotli`, then `python3 tools/build_fonts.py`.
 
 ## How it was tested
 
@@ -130,6 +150,8 @@ Open **http://127.0.0.1:8734/** and pick **Regular Game**. Add `?touch=1` to the
 | `index.html` | The game page: launcher, js-dos player, touch controls, picture filters, NOVA tile |
 | `js-dos/` | js-dos 8.5 player and the DOSBox-X WebAssembly build served with the page |
 | `assets/` | Launcher art taken from the game (`NETMEGA.PCX` background, logo) |
+| `assets/fonts/` | The game's three bitmap fonts as TTF and WOFF2, plus a specimen |
+| `tools/build_fonts.py` | Builds those fonts from the game files |
 | `omf2097.jsdos` | Ready-to-run bundle: game files plus DOSBox config |
 | `installed_game/` | Installed, configured game |
 | `extracted/` | Original CD contents: installer and manuals |
