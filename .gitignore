@@ -1,0 +1,21 @@
+node_modules/
+screenshots/
+jsdos/
+css/
+js/
+test-emu/
+
+# Original game data/binaries - never committed (copyrighted, 1994 Epic MegaGames/Diversions)
+extracted/
+installed_game/
+installed_game_v2/
+omf_clean_test/
+*.jsdos
+*.jsdos.bak
+*.iso
+archive_omf.zip
+omf.zip
+chunk.bin
+omf_code.bin
+*.bak
+*.ppm
