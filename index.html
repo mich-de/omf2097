@@ -503,12 +503,17 @@
   }
 
   // ---------- touch controls ----------
-  // Key codes are js-dos's (GLFW numbering). Player 1 in SETUP.CFG: arrows plus the keypad
-  // diagonals (PgUp/PgDn/End/Home), punch = Enter, kick = Right Shift.
-  const KEY = { esc: 256, enter: 257, right: 262, left: 263, down: 264, up: 265, pgUp: 266, pgDn: 267, home: 268, end: 269, rShift: 344 };
-  // 8 sectors clockwise from "right" (screen y grows downwards).
-  const DIR_KEYS = [KEY.right, KEY.pgDn, KEY.down, KEY.end, KEY.left, KEY.home, KEY.up, KEY.pgUp];
+  // Key codes are js-dos's (GLFW numbering). Player 1 in SETUP.CFG: arrows (plus keypad diagonals),
+  // punch = Enter, kick = Right Shift.
+  const KEY = { esc: 256, enter: 257, right: 262, left: 263, down: 264, up: 265, rShift: 344 };
+  // Eight directions clockwise from "right" (screen y grows downwards). A diagonal holds two arrows,
+  // as on a keyboard, so rolling from Down to Down-Left only adds Left: the game never sees the pad
+  // pass through neutral in the middle of a special move.
+  const DIR_KEYS = [[KEY.right], [KEY.down, KEY.right], [KEY.down], [KEY.down, KEY.left], [KEY.left], [KEY.up, KEY.left], [KEY.up], [KEY.up, KEY.right]];
   const DIR_ARMS = [["R"], ["D", "R"], ["D"], ["D", "L"], ["L"], ["U", "L"], ["U"], ["U", "R"]];
+  // Where each direction starts, in degrees clockwise from "right". The down diagonals (crouch block,
+  // quarter circles) get 52°, the up ones (jumps) 45°, the straight directions what is left.
+  const DIR_FROM = [340, 18, 70, 110, 162, 200, 245, 295];
   const PRESSED_FILL = "#3c3c65";
   const query = new URLSearchParams(location.search).get("touch");
   const touch = query !== null ? query !== "0" : matchMedia("(pointer: coarse)").matches;
@@ -602,16 +607,25 @@
     let pid = null, dir = -1;
     const set = (d) => {
       if (d === dir) return;
-      if (dir >= 0) keyUp(DIR_KEYS[dir]);
+      const now = d < 0 ? [] : DIR_KEYS[d], before = dir < 0 ? [] : DIR_KEYS[dir];
+      for (const k of now) if (!before.includes(k)) keyDown(k); // press first, then release,
+      for (const k of before) if (!now.includes(k)) keyUp(k);   // so a direction is always held
       dir = d;
-      if (dir >= 0) keyDown(DIR_KEYS[dir]);
       drawPad(dir);
     };
+    // Is angle a inside direction i's sector, widened by slack degrees on both sides?
+    const within = (a, i, slack) => {
+      const from = DIR_FROM[i], span = (DIR_FROM[(i + 1) % 8] - from + 360) % 360;
+      return (a - from + slack + 720) % 360 < span + 2 * slack;
+    };
+    // A thumb wobbles: the current direction holds until the angle is 10° past its edge, and the
+    // centre dead zone is a little larger to enter than to leave.
     const track = (e) => {
       const r = padCv.getBoundingClientRect();
       const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-      if (Math.hypot(dx, dy) < r.width * 0.12) set(-1);
-      else set((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8);
+      if (Math.hypot(dx, dy) < r.width * (dir < 0 ? 0.14 : 0.1)) { set(-1); return; }
+      const a = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+      set(dir >= 0 && within(a, dir, 10) ? dir : DIR_FROM.findIndex((_, i) => within(a, i, 0)));
     };
     const end = (e) => { if (e.pointerId === pid) { pid = null; set(-1); } };
     padCv.addEventListener("pointerdown", (e) => {
