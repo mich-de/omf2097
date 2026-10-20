@@ -4,34 +4,36 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>One Must Fall 2097 — Play in your browser</title>
-<meta name="description" content="Play One Must Fall 2097 (Epic MegaGames, 1994 — freeware) directly in your browser, powered by js-dos and DOSBox-X.">
+<meta name="description" content="Play One Must Fall 2097 (Epic MegaGames, 1994 — freeware) directly in your browser. The OpenOMF engine compiled to WebAssembly: no emulator, no plugins.">
 <meta name="theme-color" content="#00005f">
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="js-dos/js-dos.css">
-<script src="js-dos/js-dos.js"></script>
 <style>
-  /* The launcher is built from the game's own NetArena art:
-     background NETMEGA.PCX, lettering NETFONT1.PCX, panels the NETSET.PCX grid. */
+  /* The launcher keeps the game's own NetArena look: NETMEGA.PCX background,
+     the 2097 logo, and lettering in the game's bitmap fonts. */
+  @font-face {
+    font-family: "OMF 2097 Big";
+    src: url(assets/fonts/omf2097-big.woff2) format("woff2");
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "OMF 2097 NetArena";
+    src: url(assets/fonts/omf2097-netarena.woff2) format("woff2");
+    font-display: swap;
+  }
   :root { --navy: #00005f; --red: #670000; }
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-  #jsdos { position: fixed; inset: 0; touch-action: none; }
-  /* The picture filter draws the game here, over js-dos's own canvas (see setupFilter). */
-  #screen { position: fixed; z-index: 1; display: block; pointer-events: none; }
-  #screen[hidden] { display: none; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  body { font-family: "OMF 2097 Big", monospace; color: #a7a7ff; }
 
   #launcher {
     position: fixed; inset: 0; z-index: 10;
-    display: grid; place-items: center;
-    background: #000;
+    display: grid; place-items: center; background: #000;
     transition: opacity .5s steps(5), visibility 0s .5s;
   }
   #launcher.off { opacity: 0; visibility: hidden; }
   #stage, #hud { grid-area: 1 / 1; }
-
   /* Stage is exactly as tall as the art, so the band colours (rows 0-38 navy,
-     39-162 red, 163-199 navy of 200) continue the image seamlessly on wide screens. */
+     39-162 red, 163-199 navy of 200) continue the image seamlessly. */
   #stage {
     width: 100vw; height: min(100vh, 62.5vw);
     display: grid; place-items: center;
@@ -42,1308 +44,204 @@
     background: url(assets/netmega.png) 0 0 / 100% 100% no-repeat;
     image-rendering: pixelated;
   }
-
-  /* The HUD lies on top of the art 1:1; --u is one pixel of the 320x200 art. */
+  /* HUD on top of the art 1:1; --u is one pixel of the 320x200 art. */
   #hud {
     position: relative; width: min(100vw, 160vh); aspect-ratio: 8 / 5;
     container-type: size; --u: calc(100cqw / 320);
+    display: grid; place-items: center;
   }
-  h1 { margin: 0; }
   #logo {
     position: absolute; left: calc(200 * var(--u)); top: calc(42 * var(--u));
     width: calc(108 * var(--u)); height: auto;
     image-rendering: pixelated;
     filter: drop-shadow(0 0 calc(3 * var(--u)) rgba(0, 0, 0, .55));
   }
-  .blk {
-    position: absolute;
-    left: calc(var(--x) * var(--u)); top: calc(var(--y) * var(--u));
-    width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u));
+  #menu {
+    width: calc(180 * var(--u));
+    padding: calc(6 * var(--u));
+    background: rgba(0, 0, 83, .88);
+    outline: calc(1 * var(--u)) solid #000077;
+    text-align: center;
   }
-  .blk[hidden] { display: none; }
-  .blk canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
-  .hit {
-    position: absolute; margin: 0; padding: 0; border: 0; background: none;
-    color: transparent; font-size: 1px; line-height: 1; text-decoration: none; cursor: pointer;
+  #menu h2 {
+    margin: 0 0 calc(4 * var(--u));
+    font: calc(8 * var(--u)) "OMF 2097 Big";
+    color: #cf5b00; letter-spacing: 0;
   }
-  .hit:focus { outline: none; } /* focus is shown by the highlighted lettering */
-  #hud.panel-open #logo, #hud.panel-open #menu { visibility: hidden; }
-
-  /* Portrait: the art becomes a banner and the HUD sits below it at a whole-pixel scale. */
+  #start, #dos {
+    display: block; width: 100%; margin: 0 auto;
+    padding: calc(3 * var(--u)) 0 calc(4 * var(--u));
+    border: 0; background: none; cursor: pointer;
+    font: calc(8 * var(--u)) "OMF 2097 Big";
+    color: #7982c7; text-shadow: 0 calc(1 * var(--u)) 0 #3c3c65;
+  }
+  #start:hover, #start:focus-visible, #dos:hover, #dos:focus-visible {
+    color: #cbcbff; outline: none; text-shadow: 0 0 calc(2 * var(--u)) #cbcbff;
+  }
+  #keys {
+    margin: calc(5 * var(--u)) 0 0;
+    font: calc(6 * var(--u)) / calc(9 * var(--u)) "OMF 2097 Big";
+    color: #7982c7; text-align: left;
+  }
+  #keys b { color: #cf5b00; font-weight: normal; }
+  #status {
+    margin: calc(4 * var(--u)) 0 0;
+    font: calc(6 * var(--u)) "OMF 2097 Big"; color: #cbcbff;
+    min-height: calc(9 * var(--u));
+  }
+  /* Portrait: art becomes a banner, menu below it. */
   @media (max-aspect-ratio: 1/1) {
-    #launcher { display: flex; flex-direction: column; overflow-y: auto; background: var(--red); }
-    #stage { flex: none; height: 62.5vw; }
+    #launcher { overflow-y: auto; background: var(--red); }
+    #stage { height: 62.5vw; }
     #hud {
       position: static; width: auto; aspect-ratio: auto; container-type: normal;
-      display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 16px 40px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      padding: 16px 16px 40px;
     }
-    #logo, .blk { position: relative; left: auto; top: auto; }
-    #logo { width: min(80vw, 380px); }
+    #logo { position: static; width: min(80vw, 380px); }
+    #menu { width: min(92vw, 420px); padding: 12px; outline-width: 1px; }
+    #menu h2 { font-size: 24px; margin-bottom: 8px; }
+    #start, #dos { font-size: 22px; padding: 8px 0; }
+    #keys { font-size: 16px; line-height: 24px; margin-top: 12px; }
+    #status { font-size: 15px; min-height: 24px; }
   }
-
   @media (prefers-reduced-motion: reduce) { #launcher { transition: none; } }
 
-  /* Touch controls (phones/tablets): pixel art drawn at native size, --t px per art pixel. */
-  #touch { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
-  #touch[hidden] { display: none; }
-  #touch canvas {
-    display: block; pointer-events: auto; opacity: .85;
-    width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
-    image-rendering: pixelated;
-    touch-action: none; user-select: none; -webkit-user-select: none;
-    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  /* The game draws into this canvas, scaled by CSS, pixelated. */
+  #stage-game { position: fixed; inset: 0; display: none; background: #000; }
+  #stage-game.on { display: block; }
+  #canvas {
+    position: absolute; inset: 0; margin: auto;
+    width: 100%; height: 100%; object-fit: contain;
+    image-rendering: pixelated; outline: none;
   }
-  #pad { position: absolute; left: calc(env(safe-area-inset-left) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px); }
-  #sys {
-    position: absolute; left: calc(env(safe-area-inset-left) + 10px); top: calc(env(safe-area-inset-top) + 10px);
-    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
-  }
-  #fight {
-    position: absolute; right: calc(env(safe-area-inset-right) + 10px); bottom: calc(env(safe-area-inset-bottom) + 10px);
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-  }
-
-  /* NOVA tile: shown only on the robot selection screen. */
-  #nova {
-    position: fixed; z-index: 21;
-    top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px);
-    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
-    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  }
-  #nova[hidden] { display: none; }
-  /* On touch screens it sits above KICK; in portrait there is no room there, so top right. */
-  #fight #nova { position: static; pointer-events: auto; }
-
-  /* Full screen and picture filter buttons: on desktop top left, shown while the mouse moves;
-     on touch screens they move under ESC. */
+  /* Floating buttons: full screen, and back when the game has quit. */
   #tools {
-    position: fixed; z-index: 21;
+    position: fixed; z-index: 11;
     top: calc(env(safe-area-inset-top) + 10px); left: calc(env(safe-area-inset-left) + 10px);
-    display: flex; align-items: flex-start; gap: 6px;
-    transition: opacity .3s;
+    display: flex; gap: 6px; transition: opacity .3s;
   }
   #tools.idle { opacity: 0; pointer-events: none; }
+  #tools[hidden] { display: none; }
   .tool {
-    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
-    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    padding: 6px 10px; border: 1px solid #000077; background: rgba(0, 0, 83, .85);
+    color: #7982c7; font: 14px "OMF 2097 Big"; cursor: pointer;
   }
-  .tool[hidden] { display: none; }
-  .tool:focus { outline: none; }
-  .tool canvas {
-    display: block; image-rendering: pixelated;
-    width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
-  }
-  #sys .tool { pointer-events: auto; }
-  @media (orientation: portrait) {
-    #fight #nova { position: fixed; top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px); }
-  }
-  #nova:focus { outline: none; }
-  #nova canvas {
-    display: block; image-rendering: pixelated;
-    width: calc(var(--w) * var(--t)); height: calc(var(--h) * var(--t));
-  }
+  .tool:hover, .tool:focus-visible { color: #cbcbff; outline: none; }
 </style>
 </head>
 <body>
+
 <main id="launcher">
   <div id="stage" aria-hidden="true"><div id="art"></div></div>
   <div id="hud">
     <h1><img id="logo" src="assets/logo.png" width="306" height="192" alt="One Must Fall 2097"></h1>
-    <nav id="menu" class="blk" aria-label="Main menu"><canvas aria-hidden="true"></canvas></nav>
-    <div id="loading" class="blk" role="status" hidden><canvas aria-hidden="true"></canvas><span class="sr">Loading arena</span></div>
-    <section id="panel" class="blk" role="dialog" aria-modal="true" aria-labelledby="panel-title" hidden>
-      <canvas aria-hidden="true"></canvas>
-      <div class="sr"><h2 id="panel-title"></h2><div id="panel-text"></div></div>
+    <section id="menu" aria-label="Main menu">
+      <h2>REGULAR GAME</h2>
+      <button id="start" type="button">PLAY (WASM, NO EMULATOR)</button>
+      <button id="dos" type="button">PLAY (DOS EMULATION)</button>
+      <p id="keys">
+        <b>P1</b> ARROWS MOVE &middot; ENTER PUNCH &middot; RSHIFT KICK<br>
+        <b>P2</b> WASD + QEZC &middot; LSHIFT PUNCH &middot; LCTRL KICK<br>
+        ESC MENU &middot; ENTER CONFIRM
+      </p>
+      <p id="status" role="status"></p>
     </section>
   </div>
 </main>
-<div id="jsdos"></div>
-<canvas id="screen" hidden aria-hidden="true"></canvas>
-<div id="touch" hidden>
-  <div id="sys"><canvas id="esc" aria-hidden="true"></canvas></div>
-  <canvas id="pad" aria-hidden="true"></canvas>
-  <div id="fight"><canvas id="kick" aria-hidden="true"></canvas><canvas id="punch" aria-hidden="true"></canvas></div>
+
+<div id="stage-game">
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
 </div>
-<button id="nova" type="button" hidden aria-label="Play with Nova"><canvas aria-hidden="true"></canvas></button>
-<div id="tools">
-  <button id="fs" class="tool" type="button" hidden aria-label="Full screen"><canvas aria-hidden="true"></canvas></button>
-  <button id="filter" class="tool" type="button" hidden title="Picture filter (F9)"><canvas aria-hidden="true"></canvas></button>
+<div id="tools" hidden>
+  <button id="fs" class="tool" type="button" title="Full screen (F11)">FULL SCREEN</button>
+  <button id="back" class="tool" type="button" hidden>BACK</button>
 </div>
 
 <script>
 (() => {
   "use strict";
-  // NETFONT1.PCX, ASCII 32-126: per glyph one hex digit of width, then 9 rows of 3 hex digits (MSB = left).
-  const FONT = "50000000000000000000000000006000030030038038000038038000700006c06c06c00000000000000080000680fc0680680680fc068000800003007c0c007800c0f803000080000000c40c801002004c08c00080000780c40700c00cc0c4078000500000c00c0180000000000000007000018030060060060030018000700006003001801801803006000080000300b40780fc0780b4030000700000001001007c0100100000006000000000000000000018018030600000000000003c0000000000005000000000000000000018018000800000400c0180300600c008000080000fc0c40c40c40c40e40fc000500001801801801801801c01c00080000fc0040fc0c00c00e40fc00080000fc00403c0040040e40fc000800008c08c0fc00c00c00c00c00080000fc0c00fc0040040e40fc00080000fc0c00fc0c40c40e40fc00080000fc00c00c00c00c00c00c00080000fc0c40780c40c40e40fc00080000fc0c40fc0040040e40fc00070000000000300300000300300006000000000018018000018018030800000c01803006003001800c00080000000000fc0000fc000000000800006003001800c01803006000080000fc08c00c03c03000003000080000fc0c40dc0dc0d80c00fc00080000fc0c40fc0c40c40e40e400080000f80c40f80c40c40e40f800080000fc0c00c00c00c00e00fc00080000f80c40c40c40c40e40f800080000fc0c00f00c00c00e00fc00080000fc0c00f00c00c00e00e000080000fc0c00dc0c40c40e40fc00080000c40c40fc0c40c40e40e4000500001801801801801801c01c000800001c00c00c00c00c0ec0fc00080000c40c40f80c40c40e40e400080000c00c00c00c00c00e00fc00080000fc0d40d40d40c40e40e400080000fc0c40c40c40c40e40e400080000fc0c40c40c40c40e40fc00080000fc0c40fc0c00c00e00e000080000fc0c40c40d40cc0e40fc00080000f80c40f80c40c40e40e400080000fc0c00fc0040040e40fc00080000fc03003003003003803800080000c40c40c40c40c40e40fc00080000c40c40c40c40c406803000080000c40c40c40d40d40fc0fc00080000c40c40780c40c40e40e400080000c40c40fc0040040e40fc00080000fc0040fc0c00c00e00fc000800003c03003003003003003c00080000800c006003001800c004000800003c00c00c00c00c00c03c000800001003806c0c6000000000000700000000000000000000007c000700003003001800000000000000080000000000fc00c0fc0cc0fc00080000c00c00fc0cc0cc0ec0fc00080000000000fc0c00c00e00fc000800000c00c0fc0cc0cc0dc0fc00080000000000fc0cc0fc0c00fc000800007c0600f006006007007000080000000000fc0cc0cc0fc00c0fc80000c00c00fc0cc0cc0ec0ec000500000c00000c00c00c01c01c000700000c00000c00c00c00c00c07c80000c00c00cc0cc0f80cc0cc000500001c00c00c00c00c01c01c00090000000001fc1ac18c1cc1cc00080000000000f80cc0cc0ec0ec00080000000000fc0cc0cc0ec0fc00080000000000fc0cc0cc0ec0fc0c080000000000fc0cc0cc0ec0fc00c80000000000fc0c40c00e00e000080000000000fc0c00fc00c0fc00080000600600fc06006007007c00080000000000cc0cc0cc0ec0fc00080000000000cc0cc0cc0ec078000900000000018c18c1ac1ac1fc00080000000000cc0cc0780cc0cc00080000000000cc0cc0cc0fc00c0f880000000000fc0180300600fc000800001c0300300e003003001c000800001801801800001801801800080000e003003001c0300300e000080000760dc000000000000000000";
-  const GLYPHS = [];
-  for (let i = 0; i < FONT.length; i += 28) {
-    const rows = [];
-    for (let r = 0; r < 9; r++) rows.push(parseInt(FONT.substr(i + 1 + r * 3, 3), 16));
-    GLYPHS.push({ w: parseInt(FONT[i], 16), rows });
-  }
-  const glyph = (c) => GLYPHS[c.charCodeAt(0) - 32] || GLYPHS[0];
-  const textW = (s) => [...s].reduce((n, c) => n + glyph(c).w, 0);
-  const LINE = 11;
+  const $ = (id) => document.getElementById(id);
+  const status = (s) => { $("status").textContent = s; };
 
-  // Colours sampled from the original launcher menu and the NetArena sheets.
-  const C = {
-    text: "#7982c7", hot: "#cbcbff", shade: "#3c3c65",
-    label: "#cf5b00", body: "#a7a7ff", ink: "#00001e",
-    panel: "#000053", grid: "#000077",
-  };
+  $("dos").addEventListener("click", () => { location.href = "dos.html"; });
 
-  // Lettering with the original 1px drop shadow underneath.
-  function drawText(ctx, s, x, y, color, shadow) {
-    for (const [dy, col] of [[1, shadow], [0, color]]) {
-      ctx.fillStyle = col;
-      let cx = x;
-      for (const c of s) {
-        const g = glyph(c);
-        g.rows.forEach((bits, r) => {
-          for (let b = 0; b < g.w; b++) if ((bits >> (g.w - 1 - b)) & 1) ctx.fillRect(cx + b, y + r + dy, 1, 1);
-        });
-        cx += g.w;
-      }
-    }
-  }
-
-  function wrap(text, maxW) {
-    const lines = [];
-    let line = "";
-    for (const word of text.split(" ")) {
-      const next = line ? line + " " + word : word;
-      if (!line || textW(next) <= maxW) line = next;
-      else { lines.push(line); line = word; }
-    }
-    if (line) lines.push(line);
-    return lines;
-  }
-
-  // A block is a canvas at native art resolution; its size and position are in art pixels.
-  function sizeBlock(el, x, y, w, h) {
-    el.style.setProperty("--x", x);
-    el.style.setProperty("--y", y);
-    el.style.setProperty("--w", w);
-    el.style.setProperty("--h", h);
-    const cv = el.querySelector("canvas");
-    cv.width = w;
-    cv.height = h;
-    return cv.getContext("2d");
-  }
-  function placeHit(el, x, y, w, h, bw, bh) {
-    el.style.left = (x / bw) * 100 + "%";
-    el.style.top = (y / bh) * 100 + "%";
-    el.style.width = (w / bw) * 100 + "%";
-    el.style.height = (h / bh) * 100 + "%";
-  }
-
-  const launcher = document.getElementById("launcher");
-  const hud = document.getElementById("hud");
-  const menu = document.getElementById("menu");
-  const loading = document.getElementById("loading");
-  const panel = document.getElementById("panel");
-  const portrait = matchMedia("(max-aspect-ratio: 1/1)");
-
-  function portraitUnit() {
-    return Math.max(1, Math.min(4, Math.floor((innerWidth - 32) / 124)));
-  }
-  function applyScale() {
-    if (portrait.matches) hud.style.setProperty("--u", portraitUnit() + "px");
-    else hud.style.removeProperty("--u");
-    if (panelKey) layoutPanel();
-  }
-
-  // ---------- main menu ----------
-  const MENU = [
-    { label: "Regular Game", action: "play" },
-    { label: "Instructions", action: "instructions" },
-    { label: "About", action: "about" },
-    { label: "Source Code", action: "source" },
-  ];
-  const MW = 124, MH = MENU.length * LINE;
-  let sel = 0, started = false, revealed = false;
-
-  const items = MENU.map((m, i) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "hit";
-    b.textContent = m.label;
-    placeHit(b, 0, i * LINE, MW, LINE, MW, MH);
-    b.addEventListener("mouseenter", () => select(i));
-    b.addEventListener("focus", () => select(i));
-    b.addEventListener("click", () => { select(i); actions[m.action](); });
-    menu.appendChild(b);
-    return b;
-  });
-
-  function drawMenu() {
-    const ctx = sizeBlock(menu, 192, 114, MW, MH);
-    MENU.forEach((m, i) =>
-      drawText(ctx, m.label, Math.floor((MW - textW(m.label)) / 2), i * LINE, i === sel ? C.hot : C.text, C.shade));
-  }
-  function select(i) {
-    sel = (i + items.length) % items.length;
-    drawMenu();
-  }
-
-  // ---------- info panels ----------
-  const PANELS = {
-    instructions: {
-      title: "Instructions",
-      rows: [
-        ["Move", "Arrow keys"],
-        ["Punch", "Enter"],
-        ["Kick", "Right Shift"],
-        ["Menus", "Arrows, Enter, Esc"],
-        ["Full screen", "F11"],
-        ["Filter", "F9: xBR, CRT, off"],
-        ["Touch", "On-screen pad"],
-        ["Nova", "N on robot screen"],
-      ],
-      buttons: [{ label: "< Back" }],
-    },
-    about: {
-      title: "About",
-      width: 288,
-      paras: [
-        "One Must Fall 2097 was made by Diversions Entertainment and published by Epic MegaGames in 1994. It was released as freeware in 1999.",
-        "This page runs the original DOS game in DOSBox-X compiled to WebAssembly, using js-dos.",
-      ],
-      buttons: [{ label: "< Back" }, { label: "js-dos.com >", href: "https://js-dos.com/" }],
-    },
-    blocked: {
-      title: "Download interrupted",
-      width: 288,
-      modal: true,
-      paras: [
-        "The game files did not arrive: the connection was cut while they were downloading.",
-        "Company networks often do this. Web filters such as Zscaler block archives with DOS programs inside. Try another network or your phone, or ask IT to allow mich-de.github.io.",
-      ],
-      buttons: [{ label: "Try again", action: () => location.reload() }],
-    },
-  };
-  let panelKey = null, panelSel = 0, panelHits = [];
-
-  function layoutPanel() {
-    const p = PANELS[panelKey];
-    const full = p.width || 240;
-    const w = portrait.matches ? Math.min(full, Math.floor((innerWidth - 32) / portraitUnit())) : full;
-    const pad = 8, inner = w - pad * 2;
-    const lines = []; // each line: list of [text, x offset, colour]
-    if (p.rows) {
-      const labelW = Math.max(...p.rows.map((r) => textW(r[0]))) + 8;
-      const twoCol = inner - labelW >= 90;
-      for (const [label, value] of p.rows) {
-        if (twoCol) {
-          wrap(value, inner - labelW).forEach((t, i) =>
-            lines.push(i === 0 ? [[label, 0, C.label], [t, labelW, C.body]] : [[t, labelW, C.body]]));
-        } else {
-          lines.push([[label, 0, C.label]]);
-          wrap(value, inner - 8).forEach((t) => lines.push([[t, 8, C.body]]));
-        }
-      }
-    } else {
-      p.paras.forEach((para, i) => {
-        if (i) lines.push(null); // half-line gap between paragraphs
-        wrap(para, inner).forEach((t) => lines.push([[t, 0, C.body]]));
-      });
-    }
-    const lineH = (l) => (l ? LINE : 4);
-
-    const top = 6, titleH = LINE + 4, footH = LINE + 6;
-    const h = top + titleH + lines.reduce((n, l) => n + lineH(l), 0) + 4 + footH;
-    const x = Math.floor((320 - w) / 2);
-    const y = h <= 124 ? 39 + Math.floor((124 - h) / 2) : Math.max(0, Math.floor((200 - h) / 2));
-    const ctx = sizeBlock(panel, x, y, w, h);
-
-    ctx.fillStyle = C.panel;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = C.grid;
-    for (let gx = 0; gx < w; gx += 6) ctx.fillRect(gx, 0, 1, h);
-    for (let gy = 0; gy < h; gy += 6) ctx.fillRect(0, gy, w, 1);
-    ctx.fillStyle = C.body;
-    ctx.fillRect(0, 0, w, 1);
-    ctx.fillRect(0, 0, 1, h);
-    ctx.fillStyle = C.shade;
-    ctx.fillRect(0, h - 1, w, 1);
-    ctx.fillRect(w - 1, 0, 1, h);
-
-    drawText(ctx, p.title, Math.floor((w - textW(p.title)) / 2), top, C.hot, C.ink);
-    let ly = top + titleH;
-    for (const parts of lines) {
-      if (parts) parts.forEach(([t, dx, col]) => drawText(ctx, t, pad + dx, ly, col, C.ink));
-      ly += lineH(parts);
-    }
-
-    const fy = h - footH + 2;
-    const bw = p.buttons.map((b) => textW(b.label));
-    const bx = p.buttons.length === 1 ? [Math.floor((w - bw[0]) / 2)] : [pad, w - pad - bw[1]];
-    p.buttons.forEach((b, i) => {
-      drawText(ctx, b.label, bx[i], fy, i === panelSel ? C.hot : C.text, C.ink);
-      placeHit(panelHits[i], bx[i] - 2, fy - 2, bw[i] + 4, LINE + 2, w, h);
-    });
-  }
-
-  function openPanel(key) {
-    panelKey = key;
-    panelSel = 0;
-    const p = PANELS[key];
-    panelHits.forEach((el) => el.remove());
-    panelHits = p.buttons.map((b, i) => {
-      const el = document.createElement(b.href ? "a" : "button");
-      el.className = "hit";
-      el.textContent = b.label;
-      if (b.href) { el.href = b.href; el.target = "_blank"; el.rel = "noopener"; }
-      else { el.type = "button"; el.addEventListener("click", b.action || closePanel); }
-      el.addEventListener("mouseenter", () => { panelSel = i; layoutPanel(); });
-      el.addEventListener("focus", () => { panelSel = i; layoutPanel(); });
-      panel.appendChild(el);
-      return el;
-    });
-
-    document.getElementById("panel-title").textContent = p.title;
-    const text = document.getElementById("panel-text");
-    text.replaceChildren(...(p.rows ? p.rows.map((r) => r.join(": ")) : p.paras).map((t) => {
-      const para = document.createElement("p");
-      para.textContent = t;
-      return para;
-    }));
-
-    panel.hidden = false;
-    hud.classList.add("panel-open");
-    layoutPanel();
-    panelHits[0].focus();
-  }
-  function closePanel() {
-    if (!panelKey) return;
-    panelKey = null;
-    panel.hidden = true;
-    hud.classList.remove("panel-open");
-    items[sel].focus();
-  }
-
-  // ---------- start the game ----------
-  let blinkOn = true, blinkTimer = 0;
-  function drawLoading() {
-    const s = "LOADING ARENA...";
-    const ctx = sizeBlock(loading, 192, 131, MW, 10);
-    drawText(ctx, s, Math.floor((MW - textW(s)) / 2), 0, blinkOn ? C.hot : C.text, C.shade);
-  }
-
-  function start() {
+  let started = false;
+  $("start").addEventListener("click", async () => {
     if (started) return;
     started = true;
-    menu.hidden = true;
-    loading.hidden = false;
-    drawLoading();
-    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      blinkTimer = setInterval(() => { blinkOn = !blinkOn; drawLoading(); }, 400);
-    }
-    if (touch) {
-      // Must run inside the tap; iPhone Safari has no element full screen, so failures are ignored.
-      const fs = document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
-      (fs || Promise.reject()).then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
-    }
-    watchDownloads();
-    freshBundleUrl().then((url) => Dos(document.getElementById("jsdos"), {
-      url,
-      pathPrefix: "js-dos/emulators/",
-      backend: "dosboxX",
-      autoStart: true,
-      kiosk: true,
-      // On touch screens keep 4:3 so the controls sit in the side bands instead of over the fight.
-      renderAspect: touch ? "4/3" : "Fit",
-      // DOSBox-X reports text mode as 720 wide. Keep the launcher up through the DOS boot text;
-      // the first switch to graphics is the game starting. Text mode again after that means the
-      // game quit to DOS (its order screen and the prompt), so go back to the launcher.
-      onEvent: (e, ci) => {
-        if (e !== "ci-ready" || !ci) return;
-        gameCi = ci;
-        let sawText = false, playing = false, textSince = 0;
-        const poll = setInterval(() => {
-          const text = ci.width() === 720;
-          if (!playing) {
-            if (text) sawText = true;
-            else if (sawText) { playing = gameStarted = true; reveal(); setupFilter(ci); }
-          } else if (!text) {
-            textSince = 0;
-          } else if (!textSince) {
-            textSince = Date.now();
-          } else if (Date.now() - textSince > 1500) {
-            clearInterval(poll);
-            location.reload();
-          }
-        }, 250);
+    $("start").disabled = true;
+    status("LOADING WASM ENGINE...");
+
+    // The ETag trick: a new cache entry after every deploy, so returning
+    // players never keep an old engine or an old data pack.
+    let v = "";
+    try {
+      const r = await fetch("wasm/openomf.wasm", { method: "HEAD" });
+      v = r.ok && r.headers.get("etag") ? "?v=" + encodeURIComponent(r.headers.get("etag")) : "";
+    } catch (e) { /* offline or filtered: load without version pin */ }
+
+    const Module = {
+      canvas: $("canvas"),
+      // Read-only game data at /, saved scores and config in /state.
+      ENV: { OPENOMF_RESOURCE_PATH: "/", OPENOMF_STATE_PATH: "/", OPENOMF_CONFIG_PATH: "/" },
+      locateFile: (p) => "wasm/" + p + v,
+      monitorRunDependencies: (left) => {
+        if (left > 0) status("LOADING GAME DATA... (" + left + ")");
       },
-    }));
-    setTimeout(() => { if (!downloadFailed) reveal(); }, 30000);
-  }
-
-  // ---------- download problems ----------
-  // Company web filters (Zscaler and the like) can cut the game's downloads: the bundle is a zip full
-  // of DOS programs and the emulator is 8 MB of WebAssembly. js-dos would then stop on a terse error
-  // behind the launcher, so the page watches those downloads itself and says what happened.
-  let downloadFailed = false, gameStarted = false, inFlight = 0, lastBytes = 0;
-  function downloadProblem() {
-    if (downloadFailed) return;
-    downloadFailed = true;
-    clearInterval(blinkTimer);
-    loading.hidden = true;
-    launcher.classList.remove("off");
-    launcher.inert = false;
-    openPanel("blocked");
-  }
-  function watchDownloads() {
-    const ours = (url) => {
-      try {
-        const u = new URL(url, location.href);
-        return u.origin === location.origin && /\.(jsdos|wasm|js)$/.test(u.pathname);
-      } catch {
-        return false;
-      }
+      print: (t) => { (window.__omflog = window.__omflog || []).push(String(t)); console.log("[omf]", t); },
+      printErr: (t) => { (window.__omflog = window.__omflog || []).push("E " + t); console.warn("[omf]", t); },
+      onRuntimeInitialized: () => { status("RUNTIME READY"); },
+      onExit: (c) => {
+        (window.__omflog = window.__omflog || []).push("EXIT code " + c);
+        status("GAME CLOSED (code " + c + ")");
+        $("back").hidden = false;
+        $("tools").classList.remove("idle");
+      },
+      onAbort: (why) => status("FAILED: " + why),
     };
-    const pageFetch = window.fetch;
-    window.fetch = async (input, init) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input?.url;
-      if (!ours(url)) return pageFetch(input, init);
-      let open = true;
-      const done = () => { if (open) { open = false; inFlight--; } };
-      inFlight++;
-      lastBytes = Date.now();
-      let res;
-      try {
-        res = await pageFetch(input, init);
-      } catch (e) {
-        done();
-        downloadProblem();
-        throw e;
-      }
-      // A filter's own page instead of the file: a 403 "blocked", or HTML such as "scanning, please wait".
-      const page = !res.ok || /text\/html/i.test(res.headers.get("Content-Type") || "");
-      if (page || !res.body) {
-        done();
-        if (page) downloadProblem();
-        return res;
-      }
-      // Hand the body on unchanged, noticing a connection that drops halfway.
-      const reader = res.body.getReader();
-      return new Response(new ReadableStream({
-        async pull(out) {
-          try {
-            const chunk = await reader.read();
-            lastBytes = Date.now();
-            if (chunk.done) { done(); out.close(); } else out.enqueue(chunk.value);
-          } catch (e) {
-            done();
-            downloadProblem();
-            out.error(e);
-          }
-        },
-        cancel: (why) => { done(); return reader.cancel(why); },
-      }), { status: res.status, statusText: res.statusText, headers: res.headers });
+    window.Module = Module;
+
+    const s = document.createElement("script");
+    s.src = "wasm/openomf.js";
+    s.onerror = () => status("COULD NOT LOAD wasm/openomf.js");
+    document.body.appendChild(s);
+
+    const on = () => {
+      $("launcher").classList.add("off");
+      $("stage-game").classList.add("on");
+      $("tools").hidden = false;
+      $("canvas").focus();
     };
-    const xhrOpen = XMLHttpRequest.prototype.open, xhrSend = XMLHttpRequest.prototype.send;
-    XMLHttpRequest.prototype.open = function (method, url) {
-      this.omfUrl = String(url);
-      return xhrOpen.apply(this, arguments);
-    };
-    XMLHttpRequest.prototype.send = function () {
-      if (ours(this.omfUrl)) {
-        inFlight++;
-        lastBytes = Date.now();
-        this.addEventListener("progress", () => { lastBytes = Date.now(); });
-        this.addEventListener("loadend", () => {
-          inFlight--;
-          if (this.status === 0 || this.status >= 400) downloadProblem();
-        });
-      }
-      return xhrSend.apply(this, arguments);
-    };
-    // A filter may also hold a big file while it scans it: no bytes for 30 s with a download open.
-    const stall = setInterval(() => {
-      if (gameStarted || downloadFailed) clearInterval(stall);
-      else if (inFlight > 0 && Date.now() - lastBytes > 30000) downloadProblem();
-    }, 5000);
-  }
-
-  // js-dos keeps every downloaded bundle in OPFS (jsdos/caches/bundles), keyed by its URL, and
-  // never checks it again, so an updated omf2097.jsdos would never reach returning players.
-  // Versioning the URL with the server's ETag gives each new bundle a new key; older copies
-  // are removed so they don't pile up.
-  const BUNDLE = "omf2097.jsdos";
-  async function freshBundleUrl() {
-    let url = BUNDLE;
-    try {
-      const r = await fetch(BUNDLE, { method: "HEAD", cache: "no-cache" });
-      const v = (r.headers.get("ETag") || r.headers.get("Last-Modified") || "").replace(/[^A-Za-z0-9]/g, "");
-      if (r.ok && v) url = BUNDLE + "?v=" + v;
-    } catch {}
-    try {
-      const key = url.replace(/[^a-zA-Z0-9._-]/g, "_"); // js-dos's cache file name for this URL
-      let dir = await navigator.storage.getDirectory();
-      for (const name of ["jsdos", "caches", "bundles"]) dir = await dir.getDirectoryHandle(name);
-      const stale = [];
-      for await (const name of dir.keys()) if (name.startsWith(BUNDLE) && name !== key) stale.push(name);
-      for (const name of stale) await dir.removeEntry(name);
-    } catch {}
-    return url;
-  }
-  function reveal() {
-    if (revealed) return;
-    revealed = true;
-    clearInterval(blinkTimer);
-    launcher.classList.add("off");
-    launcher.inert = true;
-    if (touch) showTouch();
-    watchForRobotScreen();
-    setupFullscreenButton();
-    setupCornerButtons();
-  }
-
-  // ---------- touch controls ----------
-  // Key codes are js-dos's (GLFW numbering). Player 1 in SETUP.CFG: arrows (plus keypad diagonals),
-  // punch = Enter, kick = Right Shift.
-  const KEY = { esc: 256, enter: 257, right: 262, left: 263, down: 264, up: 265, rShift: 344 };
-  // Eight directions clockwise from "right" (screen y grows downwards). A diagonal holds two arrows,
-  // as on a keyboard, so rolling from Down to Down-Left only adds Left: the game never sees the pad
-  // pass through neutral in the middle of a special move.
-  const DIR_KEYS = [[KEY.right], [KEY.down, KEY.right], [KEY.down], [KEY.down, KEY.left], [KEY.left], [KEY.up, KEY.left], [KEY.up], [KEY.up, KEY.right]];
-  const DIR_ARMS = [["R"], ["D", "R"], ["D"], ["D", "L"], ["L"], ["U", "L"], ["U"], ["U", "R"]];
-  // Where each direction starts, in degrees clockwise from "right". The down diagonals (crouch block,
-  // quarter circles) get 52°, the up ones (jumps) 45°, the straight directions what is left.
-  const DIR_FROM = [340, 18, 70, 110, 162, 200, 245, 295];
-  const PRESSED_FILL = "#3c3c65";
-  const query = new URLSearchParams(location.search).get("touch");
-  const touch = query !== null ? query !== "0" : matchMedia("(pointer: coarse)").matches;
-  const touchEl = document.getElementById("touch");
-  const padCv = document.getElementById("pad");
-  const escCv = document.getElementById("esc");
-  const punchCv = document.getElementById("punch");
-  const kickCv = document.getElementById("kick");
-  const held = new Set();
-  let gameCi = null;
-
-  function keyDown(code) {
-    if (held.has(code)) return;
-    held.add(code);
-    gameCi?.sendKeyEvent(code, true);
-    navigator.vibrate?.(8);
-  }
-  function keyUp(code) {
-    if (!held.delete(code)) return;
-    gameCi?.sendKeyEvent(code, false);
-  }
-  function releaseAll() { [...held].forEach(keyUp); }
-
-  function sizeCanvas(cv, w, h) {
-    cv.width = w;
-    cv.height = h;
-    cv.style.setProperty("--w", w);
-    cv.style.setProperty("--h", h);
-    return cv.getContext("2d");
-  }
-  const dot = (ctx, x, y, col) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
-
-  // Cross-shaped pad, 51x51, NETSET grid inside, lit arms for the active direction.
-  function drawPad(dir) {
-    const ctx = sizeCanvas(padCv, 51, 51);
-    const arms = dir < 0 ? [] : DIR_ARMS[dir];
-    const inCross = (x, y, i) =>
-      (x >= 17 + i && x <= 33 - i && y >= i && y <= 50 - i) || (y >= 17 + i && y <= 33 - i && x >= i && x <= 50 - i);
-    const armAt = (x, y) => (y < 17 ? "U" : y > 33 ? "D" : x < 17 ? "L" : x > 33 ? "R" : "");
-    for (let y = 0; y < 51; y++) {
-      for (let x = 0; x < 51; x++) {
-        if (!inCross(x, y, 0)) continue;
-        const col = !inCross(x, y, 1) ? C.text
-          : arms.includes(armAt(x, y)) ? PRESSED_FILL
-          : x % 6 === 0 || y % 6 === 0 ? C.grid : C.panel;
-        dot(ctx, x, y, col);
-      }
-    }
-    for (const [arm, cx, cy] of [["U", 25, 9], ["D", 25, 41], ["L", 9, 25], ["R", 41, 25]]) {
-      const col = arms.includes(arm) ? C.hot : C.text;
-      for (let i = 0; i < 4; i++) {
-        for (let j = -i; j <= i; j++) {
-          if (arm === "U") dot(ctx, cx + j, cy - 2 + i, col);
-          else if (arm === "D") dot(ctx, cx + j, cy + 2 - i, col);
-          else if (arm === "L") dot(ctx, cx - 2 + i, cy + j, col);
-          else dot(ctx, cx + 2 - i, cy + j, col);
-        }
-      }
-    }
-  }
-
-  // Round button with its label underneath in the game font.
-  function drawButton(cv, label, ring, down) {
-    const lw = textW(label), w = Math.max(27, lw) + 2, h = 39;
-    const ctx = sizeCanvas(cv, w, h);
-    const cx = Math.floor(w / 2);
-    for (let y = 0; y < 27; y++) {
-      for (let x = -13; x <= 13; x++) {
-        const d = x * x + (y - 13) * (y - 13);
-        if (d > 13.5 * 13.5) continue;
-        const col = d > 12.2 * 12.2 ? (down ? C.hot : ring)
-          : down ? PRESSED_FILL
-          : (cx + x) % 6 === 0 || y % 6 === 0 ? C.grid : C.panel;
-        dot(ctx, cx + x, y, col);
-      }
-    }
-    drawText(ctx, label, Math.floor((w - lw) / 2), 29, down ? C.hot : ring, C.ink);
-  }
-
-  function drawEsc(down) {
-    const w = textW("ESC") + 6, h = 14;
-    const ctx = sizeCanvas(escCv, w, h);
-    ctx.fillStyle = down ? C.hot : C.text;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = down ? PRESSED_FILL : C.panel;
-    ctx.fillRect(1, 1, w - 2, h - 2);
-    drawText(ctx, "ESC", 3, 2, down ? C.hot : C.body, C.ink);
-  }
-
-  function bindPad() {
-    let pid = null, dir = -1;
-    const set = (d) => {
-      if (d === dir) return;
-      const now = d < 0 ? [] : DIR_KEYS[d], before = dir < 0 ? [] : DIR_KEYS[dir];
-      for (const k of now) if (!before.includes(k)) keyDown(k); // press first, then release,
-      for (const k of before) if (!now.includes(k)) keyUp(k);   // so a direction is always held
-      dir = d;
-      drawPad(dir);
-    };
-    // Is angle a inside direction i's sector, widened by slack degrees on both sides?
-    const within = (a, i, slack) => {
-      const from = DIR_FROM[i], span = (DIR_FROM[(i + 1) % 8] - from + 360) % 360;
-      return (a - from + slack + 720) % 360 < span + 2 * slack;
-    };
-    // A thumb wobbles: the current direction holds until the angle is 10° past its edge, and the
-    // centre dead zone is a little larger to enter than to leave.
-    const track = (e) => {
-      const r = padCv.getBoundingClientRect();
-      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-      if (Math.hypot(dx, dy) < r.width * (dir < 0 ? 0.14 : 0.1)) { set(-1); return; }
-      const a = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
-      set(dir >= 0 && within(a, dir, 10) ? dir : DIR_FROM.findIndex((_, i) => within(a, i, 0)));
-    };
-    const end = (e) => { if (e.pointerId === pid) { pid = null; set(-1); } };
-    padCv.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      pid = e.pointerId;
-      padCv.setPointerCapture(pid);
-      track(e);
-    });
-    padCv.addEventListener("pointermove", (e) => { if (e.pointerId === pid) track(e); });
-    padCv.addEventListener("pointerup", end);
-    padCv.addEventListener("pointercancel", end);
-  }
-
-  function bindButton(cv, code, draw) {
-    let pid = null;
-    const end = (e) => {
-      if (e.pointerId !== pid) return;
-      pid = null;
-      keyUp(code);
-      draw(false);
-    };
-    cv.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      if (pid !== null) return;
-      pid = e.pointerId;
-      cv.setPointerCapture(pid);
-      keyDown(code);
-      draw(true);
-    });
-    cv.addEventListener("pointerup", end);
-    cv.addEventListener("pointercancel", end);
-  }
-
-  function layoutTouch() {
-    const t = Math.max(2, Math.min(5, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
-    touchEl.style.setProperty("--t", t + "px");
-  }
-
-  function showTouch() {
-    const drawPunch = (down) => drawButton(punchCv, "PUNCH", C.label, down);
-    const drawKick = (down) => drawButton(kickCv, "KICK", C.text, down);
-    drawPad(-1);
-    drawEsc(false);
-    drawPunch(false);
-    drawKick(false);
-    bindPad();
-    bindButton(punchCv, KEY.enter, drawPunch);
-    bindButton(kickCv, KEY.rShift, drawKick);
-    bindButton(escCv, KEY.esc, drawEsc);
-    touchEl.addEventListener("contextmenu", (e) => e.preventDefault());
-    addEventListener("resize", layoutTouch);
-    addEventListener("blur", releaseAll);
-    document.addEventListener("visibilitychange", () => { if (document.hidden) releaseAll(); });
-    layoutTouch();
-    touchEl.hidden = false;
-  }
-
-  // ---------- NOVA ----------
-  // The robot grid has ten fixed slots; Nova is only reachable through the original cheat:
-  // visit all ten slots, press Down 11+ times on Katana, then pick Flail. The tile does that,
-  // reading the cursor from the screen after every key so a doubled move can't derail it.
-  const novaBtn = document.getElementById("nova");
-  const novaCv = novaBtn.querySelector("canvas");
-  // Robot portraits as fractions of the frame (measured on the 640x480 robot screen).
-  const SLOT_COLS = [[22, 124], [146, 250], [270, 372], [394, 498], [518, 622]].map(([a, b]) => [a / 640, b / 640]);
-  const SLOT_ROWS = [[275, 355], [377, 460]].map(([a, b]) => [a / 480, b / 480]);
-  const KATANA = 5, FLAIL = 7;
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let novaBusy = false;
-
-  // One line on desktop; on touch it stacks "PLAY WITH NOVA" to fit the side band above KICK.
-  function drawNova(busy) {
-    const lines = touch ? ["PLAY", "WITH", "NOVA"] : ["+ NOVA"];
-    const w = Math.max(...lines.map(textW)) + 8, h = lines.length * 10 + 4;
-    const ctx = sizeCanvas(novaCv, w, h);
-    ctx.fillStyle = busy ? C.hot : touch ? C.label : C.text;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = busy ? PRESSED_FILL : C.panel;
-    ctx.fillRect(1, 1, w - 2, h - 2);
-    lines.forEach((line, i) => {
-      const col = busy ? C.hot : line.includes("NOVA") ? C.label : C.body;
-      drawText(ctx, line, Math.floor((w - textW(line)) / 2), 2 + i * 10, col, C.ink);
-    });
-  }
-
-  // Slot under player 1's cursor (0-9), or -1 when this is not the robot screen: there the chosen
-  // portrait is in colour and the other nine are grey robots. The colour comes from the pilot's
-  // scheme and some are dull (saturation down to ~28), so the test leans on the grey ones instead:
-  // no colour at all, and on average neither black nor white, which rules out fades, dark menus
-  // and the intro's white flashes.
-  async function readCursor() {
-    const img = await gameCi.screenshot();
-    const data = img.data || img, w = img.width || gameCi.width(), h = img.height || gameCi.height();
-    let pick = -1;
-    for (let s = 0; s < 10; s++) {
-      const [x0, x1] = SLOT_COLS[s % 5], [y0, y1] = SLOT_ROWS[Math.floor(s / 5)];
-      let sat = 0, lum = 0;
-      for (let fy = 4; fy < 9; fy++) {
-        for (let fx = 2; fx < 9; fx++) {
-          const i = (Math.floor((y0 + (y1 - y0) * fy / 10) * h) * w + Math.floor((x0 + (x1 - x0) * fx / 10) * w)) * 4;
-          const top = Math.max(data[i], data[i + 1], data[i + 2]);
-          sat += top - Math.min(data[i], data[i + 1], data[i + 2]);
-          lum += top;
-        }
-      }
-      sat /= 35;
-      lum /= 35;
-      if (sat > 15) {
-        if (pick >= 0) return -1;
-        pick = s;
-      } else if (sat >= 6 || lum < 25 || lum > 160) {
-        return -1;
-      }
-    }
-    return pick;
-  }
-
-  async function pickNova() {
-    if (novaBusy || !gameCi) return;
-    novaBusy = true;
-    drawNova(true);
-    try {
-      let s = await readCursor();
-      if (s < 0) return;
-      const seen = new Set([s]);
-      const tap = async (code, gap) => {
-        gameCi.sendKeyEvent(code, true);
-        await sleep(60);
-        gameCi.sendKeyEvent(code, false);
-        await sleep(gap);
-      };
-      const step = async (code) => {
-        await tap(code, 220);
-        s = await readCursor();
-        if (s < 0) throw new Error("not on the robot screen any more");
-        seen.add(s);
-      };
-      const rowDone = () => [0, 1, 2, 3, 4].every((c) => seen.has(5 * Math.floor(s / 5) + c));
-      for (let i = 0; i < 12 && !rowDone(); i++) await step(KEY.left);
-      await step(s < 5 ? KEY.down : KEY.up);
-      for (let i = 0; i < 12 && !rowDone(); i++) await step(KEY.left);
-      if (s < 5) await step(KEY.down);
-      for (let i = 0; i < 8 && s !== KATANA; i++) await step(KEY.left);
-      if (s !== KATANA) return;
-      for (let i = 0; i < 25; i++) await tap(KEY.down, 90);
-      for (let i = 0; i < 6 && s !== FLAIL; i++) await step(KEY.right);
-      if (s === FLAIL) await tap(KEY.enter, 0);
-    } catch {
-      // the screen changed under us; just stop
-    } finally {
-      novaBusy = false;
-      drawNova(false);
-    }
-  }
-
-  function watchForRobotScreen() {
-    if (touch) {
-      // Join the KICK/PUNCH column and take its pixel scale.
-      document.getElementById("fight").prepend(novaBtn);
-    } else {
-      const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
-      novaBtn.style.setProperty("--t", t + "px");
-    }
-    drawNova(false);
-    novaBtn.addEventListener("click", pickNova);
-    // N picks Nova while the tile is up; elsewhere N still reaches the game (e.g. typing names).
-    let nTaken = false;
-    addEventListener("keydown", (e) => {
-      if ((e.key !== "n" && e.key !== "N") || novaBtn.hidden) return;
-      nTaken = true;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      pickNova();
-    }, true);
-    addEventListener("keyup", (e) => {
-      if ((e.key === "n" || e.key === "N") && nTaken) {
-        nTaken = false;
-        e.stopImmediatePropagation();
-      }
-    }, true);
-    setInterval(async () => {
-      if (novaBusy || !gameCi) return;
-      try { novaBtn.hidden = (await readCursor()) < 0; } catch { novaBtn.hidden = true; }
-    }, 600);
-  }
-
-  // ---------- full screen ----------
-  const fsBtn = document.getElementById("fs");
-  const fsCv = fsBtn.querySelector("canvas");
-
-  // Four corner brackets: pointing out to enter full screen, pointing in to leave it.
-  function drawFs() {
-    const on = !!document.fullscreenElement;
-    const ctx = sizeCanvas(fsCv, 18, 14);
-    ctx.fillStyle = C.text;
-    ctx.fillRect(0, 0, 18, 14);
-    ctx.fillStyle = C.panel;
-    ctx.fillRect(1, 1, 16, 12);
-    ctx.fillStyle = C.body;
-    for (const [x, y, dx, dy] of [[4, 3, 1, 1], [13, 3, -1, 1], [4, 10, 1, -1], [13, 10, -1, -1]]) {
-      const cx = on ? x + 2 * dx : x, cy = on ? y + 2 * dy : y; // corner pixel of the bracket
-      for (let i = 0; i < 3; i++) {
-        ctx.fillRect(on ? cx - i * dx : cx + i * dx, cy, 1, 1);
-        ctx.fillRect(cx, on ? cy - i * dy : cy + i * dy, 1, 1);
-      }
-    }
-  }
-
-  function setupFullscreenButton() {
-    if (!document.fullscreenEnabled) return; // iPhone Safari: no element full screen
-    drawFs();
-    document.addEventListener("fullscreenchange", drawFs);
-    fsBtn.addEventListener("click", () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      } else {
-        document.documentElement.requestFullscreen({ navigationUI: "hide" })
-          .then(() => (touch ? screen.orientation?.lock?.("landscape") : undefined))
-          .catch(() => {});
-      }
-    });
-    fsBtn.hidden = false;
-  }
-
-  // Full screen and filter buttons: on touch screens in the column under ESC; on desktop
-  // top left, shown while the mouse moves, then out of the way.
-  const tools = document.getElementById("tools");
-  function setupCornerButtons() {
-    if (touch) {
-      document.getElementById("sys").append(fsBtn, filterBtn);
-      return;
-    }
-    const t = Math.max(2, Math.min(4, Math.floor(Math.min(innerWidth, innerHeight) / 120)));
-    tools.style.setProperty("--t", t + "px");
-    let idleTimer = 0;
-    const wake = () => {
-      tools.classList.remove("idle");
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => tools.classList.add("idle"), 2500);
-    };
-    addEventListener("mousemove", wake);
-    wake();
-  }
-
-  // ---------- picture filter ----------
-  // The bundle turns off DOSBox-X's own scaler, aspect correction and line doubling, so js-dos
-  // receives the game's real 320x200 frame. XBR and CRT redraw it with WebGL2 on a canvas laid over
-  // js-dos's own, at the same place and aspect: xBR smooths the pixel art, CRT imitates a 1994
-  // monitor. OFF leaves the drawing to js-dos (square pixels).
-  // xBR is the default on touch screens only: on desktop the full-window pass costs the emulator
-  // up to a third of its speed in Firefox, so there it starts off and is one key away.
-  const FILTERS = ["off", "xbr", "crt"];
-  const FILTER_LABELS = { xbr: "XBR", crt: "CRT", off: "OFF" };
-  const FILTER_NAMES = { xbr: "xBR", crt: "CRT", off: "off" };
-  const screenCv = document.getElementById("screen");
-  const filterBtn = document.getElementById("filter");
-  const filterCv = filterBtn.querySelector("canvas");
-  let filter = touch ? "xbr" : "off", filterReady = false;
-  try {
-    const saved = localStorage.getItem("omf2097.filter");
-    if (FILTERS.includes(saved)) filter = saved;
-  } catch {}
-
-  // One quad over the whole canvas; uv starts at the frame's top left (row 0 is uploaded first).
-  const FILTER_VS = `#version 300 es
-in vec2 pos;
-out vec2 uv;
-void main() { gl_Position = vec4(pos, 0.0, 1.0); uv = vec2(pos.x + 1.0, 1.0 - pos.y) * 0.5; }`;
-  const FILTER_HEAD = `#version 300 es
-precision highp float;
-uniform sampler2D frame;
-in vec2 uv;
-out vec4 color;
-`;
-  const FILTER_FS = {
-    // A 1994 monitor: soft beam, one scanline per game line, aperture-grille mask.
-    crt: FILTER_HEAD + `
-ivec2 lim;
-vec3 fetch(ivec2 p) { vec3 c = texelFetch(frame, clamp(p, ivec2(0), lim), 0).rgb; return c * c; }
-float gaus(float d, float hard) { return exp2(-hard * d * d); }
-vec3 beam(ivec2 p, float fx) {
-  vec3 c = vec3(0.0);
-  float w = 0.0;
-  for (int i = -1; i <= 2; i++) {
-    float k = gaus(float(i) - fx, 4.0);
-    c += fetch(p + ivec2(i, 0)) * k;
-    w += k;
-  }
-  return c / w;
-}
-void main() {
-  lim = textureSize(frame, 0) - 1;
-  vec2 p = uv * vec2(textureSize(frame, 0)) - 0.5, f = fract(p);
-  ivec2 b = ivec2(floor(p));
-  vec3 c = beam(b, f.x) * gaus(f.y, 8.0) + beam(b + ivec2(0, 1), f.x) * gaus(1.0 - f.y, 8.0);
-  float m = mod(gl_FragCoord.x, 3.0);
-  vec3 mask = vec3(0.8);
-  if (m < 1.0) mask.r = 1.2; else if (m < 2.0) mask.g = 1.2; else mask.b = 1.2;
-  color = vec4(sqrt(c * mask * 1.4), 1.0);
-}`,
-    /* Hyllian's xBR-lv2 (corner C, smooth tips) from libretro/glsl-shaders, adapted here:
-       neighbours are read with texelFetch, and the edge blend follows the output scale.
-
-       Copyright (C) 2011-2016 Hyllian - sergiogdb@gmail.com
-
-       Permission is hereby granted, free of charge, to any person obtaining a copy
-       of this software and associated documentation files (the "Software"), to deal
-       in the Software without restriction, including without limitation the rights
-       to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-       copies of the Software, and to permit persons to whom the Software is
-       furnished to do so, subject to the following conditions:
-
-       The above copyright notice and this permission notice shall be included in
-       all copies or substantial portions of the Software.
-
-       THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-       IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-       FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-       AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-       LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-       OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-       THE SOFTWARE. */
-    xbr: FILTER_HEAD + `
-uniform float scale;
-const float EQ_THRESHOLD = 15.0;
-const float LV2_COEFFICIENT = 2.0;
-const vec3 rgbw = vec3(14.352, 28.176, 5.472);
-const vec4 Ao = vec4(1.0, -1.0, -1.0, 1.0);
-const vec4 Bo = vec4(1.0, 1.0, -1.0, -1.0);
-const vec4 Co = vec4(1.5, 0.5, -0.5, 0.5);
-const vec4 Ax = vec4(1.0, -1.0, -1.0, 1.0);
-const vec4 Bx = vec4(0.5, 2.0, -0.5, -2.0);
-const vec4 Cx = vec4(1.0, 1.0, -0.5, 0.0);
-const vec4 Ay = vec4(1.0, -1.0, -1.0, 1.0);
-const vec4 By = vec4(2.0, 0.5, -2.0, -0.5);
-const vec4 Cy = vec4(2.0, 0.0, -1.0, 0.5);
-const vec4 Ci = vec4(0.25);
-ivec2 ip, lim;
-vec3 px(int x, int y) { return texelFetch(frame, clamp(ip + ivec2(x, y), ivec2(0), lim), 0).rgb; }
-vec4 df(vec4 a, vec4 b) { return abs(a - b); }
-vec4 diff(vec4 a, vec4 b) { return vec4(notEqual(a, b)); }
-vec4 eq(vec4 a, vec4 b) { return step(df(a, b), vec4(EQ_THRESHOLD)); }
-vec4 neq(vec4 a, vec4 b) { return vec4(1.0) - eq(a, b); }
-vec4 wd(vec4 a, vec4 b, vec4 c, vec4 d, vec4 e, vec4 f, vec4 g, vec4 h) {
-  return df(a, b) + df(a, c) + df(d, e) + df(d, f) + 4.0 * df(g, h);
-}
-float c_df(vec3 c1, vec3 c2) { vec3 d = abs(c1 - c2); return d.r + d.g + d.b; }
-void main() {
-  lim = textureSize(frame, 0) - 1;
-  vec2 pos = uv * vec2(textureSize(frame, 0)), fp = fract(pos);
-  ip = ivec2(floor(pos));
-  vec4 delta = vec4(1.0 / scale);
-  vec4 delta_l = vec4(0.5, 1.0, 0.5, 1.0) / scale;
-  vec4 delta_u = delta_l.yxwz;
-
-  vec3 A1 = px(-1, -2), B1 = px(0, -2), C1 = px(1, -2);
-  vec3 A = px(-1, -1), B = px(0, -1), C = px(1, -1);
-  vec3 D = px(-1, 0), E = px(0, 0), F = px(1, 0);
-  vec3 G = px(-1, 1), H = px(0, 1), I = px(1, 1);
-  vec3 G5 = px(-1, 2), H5 = px(0, 2), I5 = px(1, 2);
-  vec3 A0 = px(-2, -1), D0 = px(-2, 0), G0 = px(-2, 1);
-  vec3 C4 = px(2, -1), F4 = px(2, 0), I4 = px(2, 1);
-
-  vec4 b = vec4(dot(B, rgbw), dot(D, rgbw), dot(H, rgbw), dot(F, rgbw));
-  vec4 c = vec4(dot(C, rgbw), dot(A, rgbw), dot(G, rgbw), dot(I, rgbw));
-  vec4 d = b.yzwx;
-  vec4 e = vec4(dot(E, rgbw));
-  vec4 f = b.wxyz;
-  vec4 g = c.zwxy;
-  vec4 h = b.zwxy;
-  vec4 i = c.wxyz;
-  vec4 i4 = vec4(dot(I4, rgbw), dot(C1, rgbw), dot(A0, rgbw), dot(G5, rgbw));
-  vec4 i5 = vec4(dot(I5, rgbw), dot(C4, rgbw), dot(A1, rgbw), dot(G0, rgbw));
-  vec4 h5 = vec4(dot(H5, rgbw), dot(F4, rgbw), dot(B1, rgbw), dot(D0, rgbw));
-  vec4 f4 = h5.yzwx;
-
-  vec4 fx = Ao * fp.y + Bo * fp.x;
-  vec4 fx_l = Ax * fp.y + Bx * fp.x;
-  vec4 fx_u = Ay * fp.y + By * fp.x;
-
-  vec4 irlv0 = diff(e, f) * diff(e, h);
-  vec4 irlv1 = irlv0 * (neq(f, b) * neq(f, c) + neq(h, d) * neq(h, g)
-    + eq(e, i) * (neq(f, f4) * neq(f, i4) + neq(h, h5) * neq(h, i5)) + eq(e, g) + eq(e, c));
-  vec4 irlv2l = diff(e, g) * diff(d, g);
-  vec4 irlv2u = diff(e, c) * diff(b, c);
-
-  vec4 fx45i = clamp((fx + delta - Co - Ci) / (2.0 * delta), 0.0, 1.0);
-  vec4 fx45 = clamp((fx + delta - Co) / (2.0 * delta), 0.0, 1.0);
-  vec4 fx30 = clamp((fx_l + delta_l - Cx) / (2.0 * delta_l), 0.0, 1.0);
-  vec4 fx60 = clamp((fx_u + delta_u - Cy) / (2.0 * delta_u), 0.0, 1.0);
-
-  vec4 wd1 = wd(e, c, g, i, h5, f4, h, f);
-  vec4 wd2 = wd(h, d, i5, f, i4, b, e, i);
-
-  vec4 edri = step(wd1, wd2) * irlv0;
-  vec4 edr = step(wd1 + vec4(0.1), wd2) * step(vec4(0.5), irlv1);
-  vec4 edr_l = step(LV2_COEFFICIENT * df(f, g), df(h, c)) * irlv2l * edr;
-  vec4 edr_u = step(LV2_COEFFICIENT * df(h, c), df(f, g)) * irlv2u * edr;
-
-  fx45 = edr * fx45;
-  fx30 = edr_l * fx30;
-  fx60 = edr_u * fx60;
-  fx45i = edri * fx45i;
-
-  vec4 near = step(df(e, f), df(e, h));
-  vec4 maximos = max(max(fx30, fx60), max(fx45, fx45i));
-
-  vec3 res1 = E;
-  res1 = mix(res1, mix(H, F, near.x), maximos.x);
-  res1 = mix(res1, mix(B, D, near.z), maximos.z);
-  vec3 res2 = E;
-  res2 = mix(res2, mix(F, B, near.y), maximos.y);
-  res2 = mix(res2, mix(D, H, near.w), maximos.w);
-  color = vec4(mix(res1, res2, step(c_df(E, res1), c_df(E, res2))), 1.0);
-}`,
-  };
-
-  // The button shows the filter in use; every label gets the same box so it doesn't jump.
-  function drawFilter() {
-    const label = FILTER_LABELS[filter];
-    const w = Math.max(...FILTERS.map((f) => textW(FILTER_LABELS[f]))) + 6, h = 14;
-    const ctx = sizeCanvas(filterCv, w, h);
-    ctx.fillStyle = C.text;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = C.panel;
-    ctx.fillRect(1, 1, w - 2, h - 2);
-    drawText(ctx, label, Math.floor((w - textW(label)) / 2), 2, filter === "off" ? C.body : C.hot, C.ink);
-    filterBtn.setAttribute("aria-label", "Picture filter: " + FILTER_NAMES[filter]);
-  }
-
-  function setupFilter(ci) {
-    if (filterReady) return;
-    filterReady = true;
-    const canvases = [...document.querySelectorAll("#jsdos canvas")];
-    const jsCv = canvases.find((c) => c.width === ci.width() && c.height === ci.height()) || canvases[0];
-    const gl = screenCv.getContext("webgl2", { alpha: false, antialias: false, depth: false, stencil: false });
-    if (!jsCv || !gl) return;
-    // Software WebGL (no usable GPU) would run these shaders on the CPU the emulator needs, and
-    // OMF crashes with a runtime error when it starves. There js-dos keeps drawing, as it is cheap.
-    const info = gl.getExtension("WEBGL_debug_renderer_info");
-    const renderer = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
-    if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)) return;
-
-    // Shaders are compiled the first time their filter is picked.
-    const programs = {};
-    const program = (name) => {
-      if (name in programs) return programs[name];
-      programs[name] = null;
-      try {
-        const p = gl.createProgram();
-        for (const [type, src] of [[gl.VERTEX_SHADER, FILTER_VS], [gl.FRAGMENT_SHADER, FILTER_FS[name]]]) {
-          const s = gl.createShader(type);
-          gl.shaderSource(s, src);
-          gl.compileShader(s);
-          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
-          gl.attachShader(p, s);
-        }
-        gl.bindAttribLocation(p, 0, "pos");
-        gl.linkProgram(p);
-        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-        gl.useProgram(p);
-        gl.uniform1i(gl.getUniformLocation(p, "frame"), 0);
-        programs[name] = { p, scale: gl.getUniformLocation(p, "scale") };
-      } catch (e) {
-        console.warn("Picture filter " + name + " unavailable:", e);
-      }
-      return programs[name];
-    };
-    // OFF needs no shader; XBR and CRT only count if theirs compiles on this device.
-    const usable = (f) => f === "off" || !!program(f);
-    if (!usable(filter)) filter = "off";
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-
-    // js-dos hands every listener the same frame buffer (RGB, updated in place); upload it at most
-    // once per display frame.
-    let frame = null, fresh = false, texW = 0, texH = 0, texFmt = 0;
-    let running = false, lost = false, shown = false, redraw = true, boxL = 0, boxT = 0, boxW = 0, boxH = 0;
-    ci.events().onFrame((rgb, rgba) => { frame = rgb || rgba; fresh = true; });
-
-    // Give the screen back to js-dos.
-    const hide = () => {
-      shown = false;
-      screenCv.hidden = true;
-      jsCv.style.visibility = "";
-    };
-    screenCv.addEventListener("webglcontextlost", () => {
-      lost = true;
-      filterBtn.hidden = true;
-    });
-
-    // Runs only while XBR or CRT is on.
-    const render = () => {
-      if (lost || filter === "off") {
-        running = false;
-        hide();
-        return;
-      }
-      requestAnimationFrame(render);
-      // Follow js-dos's canvas: it already has the place and aspect the page asked for.
-      const r = jsCv.getBoundingClientRect();
-      if (r.width < 1 || r.height < 1) return;
-      if (r.left !== boxL || r.top !== boxT || r.width !== boxW || r.height !== boxH) {
-        boxL = r.left; boxT = r.top; boxW = r.width; boxH = r.height;
-        Object.assign(screenCv.style, { left: boxL + "px", top: boxT + "px", width: boxW + "px", height: boxH + "px" });
-      }
-      // Device pixels, capped so a 4K screen doesn't cost four times the GPU work of a 1080p one.
-      const k = Math.min(devicePixelRatio || 1, 2560 / r.width, 1600 / r.height);
-      const w = Math.round(r.width * k), h = Math.round(r.height * k);
-      if (screenCv.width !== w || screenCv.height !== h) {
-        screenCv.width = w;
-        screenCv.height = h;
-        redraw = true;
-      }
-      if (fresh && frame) {
-        fresh = false;
-        const fw = ci.width(), fh = ci.height(), ch = frame.length / (fw * fh);
-        if (ch === 3 || ch === 4) { // otherwise the size just changed and this buffer is the old one
-          const fmt = ch === 3 ? gl.RGB : gl.RGBA;
-          if (fw !== texW || fh !== texH || fmt !== texFmt) {
-            gl.texImage2D(gl.TEXTURE_2D, 0, ch === 3 ? gl.RGB8 : gl.RGBA8, fw, fh, 0, fmt, gl.UNSIGNED_BYTE, frame);
-            texW = fw;
-            texH = fh;
-            texFmt = fmt;
-          } else {
-            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fw, fh, fmt, gl.UNSIGNED_BYTE, frame);
-          }
-          redraw = true;
-        }
-      }
-      if (!redraw || !texW) return;
-      redraw = false;
-      const prog = programs[filter];
-      gl.viewport(0, 0, w, h);
-      gl.useProgram(prog.p);
-      if (prog.scale) gl.uniform1f(prog.scale, Math.min(w / texW, h / texH));
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      if (!shown) { // hand over only once there is a picture to show
-        shown = true;
-        screenCv.hidden = false;
-        jsCv.style.visibility = "hidden";
-      }
-    };
-
-    const start = () => {
-      if (running || lost || filter === "off") return;
-      running = true;
-      fresh = redraw = true; // upload the current frame even if the screen is still
-      requestAnimationFrame(render);
-    };
-
-    const next = () => {
-      let i = FILTERS.indexOf(filter);
-      do i = (i + 1) % FILTERS.length; while (!usable(FILTERS[i]));
-      filter = FILTERS[i];
-      try { localStorage.setItem("omf2097.filter", filter); } catch {}
-      drawFilter();
-      redraw = true;
-      start();
-    };
-    filterBtn.addEventListener("click", next);
-    // F9 switches the filter; the game never sees it.
-    addEventListener("keydown", (e) => {
-      if (e.key !== "F9") return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      if (!e.repeat) next();
-    }, true);
-    addEventListener("keyup", (e) => { if (e.key === "F9") e.stopImmediatePropagation(); }, true);
-
-    drawFilter();
-    filterBtn.hidden = false;
-    start();
-  }
-
-  const actions = {
-    play: start,
-    instructions: () => openPanel("instructions"),
-    about: () => openPanel("about"),
-    source: () => window.open("https://github.com/mich-de/omf2097", "_blank", "noopener"),
-  };
-
-  launcher.addEventListener("click", (e) => {
-    if (panelKey && !PANELS[panelKey].modal && !panel.contains(e.target) && !menu.contains(e.target)) closePanel();
+    const check = setInterval(() => {
+      if ($("canvas").width > 0) { on(); clearInterval(check); }
+    }, 200);
   });
+
+  // Full screen, and keep the buttons out of the way while the mouse rests.
+  $("fs").addEventListener("click", () => {
+    const d = document;
+    if (d.fullscreenElement) d.exitFullscreen();
+    else d.documentElement.requestFullscreen?.();
+  });
+  $("back").addEventListener("click", () => location.reload());
+
+  let idle;
+  const wake = () => {
+    $("tools").classList.remove("idle");
+    clearTimeout(idle);
+    idle = setTimeout(() => $("tools").classList.add("idle"), 2500);
+  };
+  document.addEventListener("mousemove", wake);
+  wake();
+
+  // Arrows and space scroll the page otherwise.
   document.addEventListener("keydown", (e) => {
-    if (started) return;
-    if (panelKey) {
-      if (e.key === "Escape") { e.preventDefault(); closePanel(); }
-      else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        const n = panelHits.length;
-        panelSel = (panelSel + (e.key === "ArrowRight" ? 1 : n - 1)) % n;
-        panelHits[panelSel].focus();
-      }
-      return;
-    }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if ($("stage-game").classList.contains("on") &&
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "PageUp", "PageDown"].includes(e.key)) {
       e.preventDefault();
-      select(sel + (e.key === "ArrowDown" ? 1 : -1));
-      items[sel].focus();
-    } else if ((e.key === "Enter" || e.key === " ") && !items.includes(document.activeElement)) {
-      e.preventDefault();
-      items[sel].click();
     }
   });
-
-  portrait.addEventListener("change", applyScale);
-  addEventListener("resize", applyScale);
-  applyScale();
-  drawMenu();
 })();
 </script>
 </body>

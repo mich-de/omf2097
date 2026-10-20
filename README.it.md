@@ -2,12 +2,13 @@
 
 # ONE MUST FALL 2097
 
-### Il classico picchiaduro di robot del 1994, che si avvia nel tuo browser
+### Il classico picchiaduro di robot del 1994, che gira in modo nativo nel tuo browser
 
 [English](README.md) · **Italiano**
 
-![js-dos 8.5](https://img.shields.io/badge/js--dos-8.5-1f6feb?style=for-the-badge)
-![DOSBox-X WebAssembly](https://img.shields.io/badge/DOSBox--X-WebAssembly-6e40c9?style=for-the-badge)
+![OpenOMF WebAssembly](https://img.shields.io/badge/OpenOMF-WebAssembly-0b7285?style=for-the-badge)
+![Emscripten SDL2](https://img.shields.io/badge/Emscripten-SDL2-1f6feb?style=for-the-badge)
+![js-dos 8.5 fallback DOS](https://img.shields.io/badge/js--dos-8.5-DOS-fallback-6e40c9?style=for-the-badge)
 ![WebGL2 xBR e CRT](https://img.shields.io/badge/WebGL2-xBR_%C2%B7_CRT-2e7d32?style=for-the-badge)
 ![Uscito nel 1994](https://img.shields.io/badge/uscito_nel-1994-c62828?style=for-the-badge)
 
@@ -15,9 +16,9 @@
 
 **▶ [Giocalo subito nel browser → mich-de.github.io/omf2097](https://mich-de.github.io/omf2097/)**
 
-<img src="screenshots/GAMEPLAY_hero_xbr.png" alt="Shadow e Gargoyle si scontrano in aria nell'arena Fire Pit, disegnati con il filtro xBR" width="820">
+<img src="screenshots/GAMEPLAY_native_fight.png" alt="Crystal Jaguar e Cossette Flail si scontrano nella build nativa WebAssembly di OpenOMF" width="820">
 
-*Shadow contro Gargoyle nella Fire Pit: a tutta finestra su desktop, con il filtro xBR.*
+*Build nativa WebAssembly (OpenOMF): niente emulatore, WebGL2, il vero fotogramma 320x200 del gioco.*
 
 </div>
 
@@ -25,14 +26,22 @@
 
 ## Gioca online
 
-Nessuna installazione: apri **https://mich-de.github.io/omf2097/**, scegli **Regular Game** e attendi il download di circa 15 MB.
+Nessuna installazione: apri **https://mich-de.github.io/omf2097/** e premi **PLAY (WASM, NO EMULATOR)**. La pagina scarica il motore e i dati di gioco (~19 MB la prima volta, poi la cache del browser li tiene, con una voce nuova a ogni pubblicazione) e avvia subito il gioco. Niente DOS, niente emulatore: qui gira [OpenOMF](https://github.com/omf2097/openomf), la reimplementazione aperta, compilata in WebAssembly.
+
+- **Comandi:** il giocatore 1 usa le frecce, `Invio` per il pugno, `Shift destro` per il calcio. Il giocatore 2 gioca con `WASD` + `QEZC`, `Shift sinistro` per il pugno, `Ctrl sinistro` per il calcio. `Esc` apre il menu, `Invio` conferma. `F11` o **FULL SCREEN** per lo schermo intero.
+- **Singolo giocatore e due giocatori locali** sono entrambi supportati; il gioco in rete non è collegato (la voce NETWORK PLAY del menu richiede un server che questo sito non offre).
+- **Telefono e tablet:** per ora la versione nativa usa solo la tastiera; premi invece **PLAY (DOS EMULATION)**, che è la vecchia pagina js-dos con la croce direzionale, i filtri dell'immagine e la casella Nova.
+- **Reti aziendali:** filtri web come Zscaler possono interrompere il download (il data pack a loro sembra un archivio di programmi DOS). La pagina allora lo dice e propone di riprovare; la soluzione è un'altra rete, oppure chiedere all'IT di sbloccare `mich-de.github.io`.
+
+### La pagina di emulazione DOS
+
+La versione precedente del sito vive come **[dos.html](dos.html)**: js-dos 8.5 con DOSBox-X che fa girare il gioco DOS originale, download di ~15 MB.
 
 - **Desktop:** il gioco riempie la finestra. Frecce per muoverti, `Invio` per il pugno, `Shift destro` per il calcio, `Esc` per il menu. Muovi il mouse per far comparire i tasti dello schermo intero e del filtro (in alto a sinistra), oppure premi `F11`.
 - **Telefono e tablet:** compaiono una croce direzionale e i tasti **PUNCH**, **KICK**, **ESC**, schermo intero e filtro. All'avvio del gioco viene chiesto lo schermo intero in orizzontale dove il browser lo consente (Android sì, iPhone no).
 - **Immagine:** su telefono e tablet la grafica è smussata con xBR di default; su desktop il filtro parte spento. `F9` o il tasto del filtro alternano **OFF** (i pixel originali), **XBR** e **CRT** (scanline, come un monitor del 1994), e la pagina ricorda la scelta.
 - **Nova:** nella schermata di selezione dei robot di una partita a un giocatore compare la casella **+ NOVA** (desktop, oppure premi `N`) o il tasto **PLAY WITH NOVA** sopra KICK (telefono). La pagina esegue per te il trucco originale e seleziona Nova, con qualsiasi dei dieci piloti. In una partita a due il giocatore 2 deve ancora fare il trucco a mano.
 - **Uscire:** scegli **QUIT** nel menu principale del gioco (`Esc` ci porta il cursore) e la pagina torna alla schermata iniziale.
-- **Reti aziendali:** filtri web come Zscaler possono interrompere il download, perché il bundle è un archivio pieno di programmi DOS. La pagina allora lo dice e propone di riprovare; la soluzione è un'altra rete, oppure chiedere all'IT di sbloccare `mich-de.github.io`.
 
 One Must Fall 2097 è freeware dal 1999. Questo repo è anche il sito: GitHub Pages lo serve direttamente dalla radice.
 
@@ -43,7 +52,7 @@ One Must Fall 2097 è freeware dal 1999. Questo repo è anche il sito: GitHub Pa
 | <img src="screenshots/GAMEPLAY_combo_xbr.png" width="400"><br>Colpi consecutivi nella Fire Pit, xBR | <img src="screenshots/GAMEPLAY_desert_crt.png" width="400"><br>L'arena nel deserto con il filtro CRT (ritaglio 1:1) |
 | <img src="screenshots/GAMEPLAY_phone_nova.png" width="400"><br>Telefono: Nova nell'arena-gabbia, comandi nelle bande laterali | <img src="screenshots/GAMEPLAY_phone_robots.png" width="400"><br>Telefono: **PLAY WITH NOVA** nella schermata dei robot |
 | <img src="screenshots/GAMEPLAY_robots_nova.png" width="400"><br>Desktop: la casella **+ NOVA**, in alto a destra | <img src="screenshots/GAMEPLAY_versus.png" width="400"><br>Provocazioni prima dello scontro |
-| <img src="screenshots/GAMEPLAY_menu.png" width="400"><br>Menu principale | <img src="screenshots/GAMEPLAY_pilots.png" width="400"><br>Dieci piloti tra cui scegliere |
+| <img src="screenshots/GAMEPLAY_native_menu.png" width="400"><br>Menu principale, build nativa | <img src="screenshots/GAMEPLAY_pilots.png" width="400"><br>Dieci piloti tra cui scegliere |
 
 ## Avvio rapido
 
@@ -53,10 +62,12 @@ cd omf2097
 python3 -m http.server 8734
 ```
 
-Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` all'indirizzo per provare i comandi mobile da computer. `npm install` serve solo per gli strumenti Node qui sotto.
+Apri **http://127.0.0.1:8734/** e premi **PLAY (WASM, NO EMULATOR)**. **PLAY (DOS EMULATION)** apre invece la pagina js-dos; aggiungi `?touch=1` al suo indirizzo per provare i comandi mobile da computer. `npm install` serve solo per gli strumenti Node qui sotto.
 
 ## In evidenza
 
+- **Nativo, senza emulatore.** Il gioco vero e proprio — [OpenOMF](https://github.com/omf2097/openomf) in C con SDL2 — compilato in WebAssembly e reso su WebGL2. Menu, scontri e musica girano nella pagina: niente DOS, niente js-dos, niente CPU emulata.
+- **Due modi di giocare, una pagina.** **PLAY (WASM, NO EMULATOR)** avvia la versione nativa; **PLAY (DOS EMULATION)** apre la pagina js-dos per telefoni, tablet e per chi vuole il vecchio DOS.
 - **Una pagina per desktop e mobile.** Sugli schermi touch compaiono croce e pulsanti; con la tastiera funziona e basta.
 - **Un launcher fatto con la grafica del gioco.** Sfondo, scritte e pannelli vengono dalle schermate NetArena del 1994 incluse nel gioco.
 - **Impostazioni ottimizzate.** Velocità di gioco al 50%, audio Gravis Ultrasound stereo, CPU emulata al massimo.
@@ -65,7 +76,27 @@ Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` a
 - **Una croce fatta per combattere.** Diagonali che restano ferme e mosse speciali che non si spezzano a metà.
 - **Kit di test headless.** Avvia programmi DOS da Node, invia tasti, cattura ogni frame nuovo, modifica i file in memoria, pilota Chrome vero tramite il DevTools Protocol.
 
-## Come è tornato in vita
+## La versione WebAssembly nativa
+
+`index.html` avvia il gioco come WebAssembly invece di emulare la macchina per cui è stato scritto:
+
+- **Il motore.** [OpenOMF](https://github.com/omf2097/openomf) (C, SDL2) fissato al commit `4fd5be9`, compilato con Emscripten. SDL2, SDL2_mixer, libpng e zlib vengono dalle porte di Emscripten; enet, libxmp e libconfuse sono compilati come librerie statiche WebAssembly; libepoxy è sostituito da una piccola shim che serve `epoxy/gl.h` come GLES3, la lingua che parla WebGL2.
+- **Shader.** Gli shader GLSL 3.00 vengono tradotti per GL ES a tempo di build (in `tools/web/build_openomf.sh`): `highp usampler2D`, nessun `gl_FragCoord` ridichiarato, niente mescolo `int`/`float`, bias di `textureLod` come float.
+- **Colore.** WebGL2 non sa renderizzare in `RGBA16`, quindi il render target a indici di palette è `RGBA16F`; la mantissa half-float tiene ogni indice esatto perché la decodifica quantizza con `int(v * 1023.0 + 0.5)`.
+- **Tempi.** GitHub Pages non manda header `COOP`/`COEP`, quindi niente thread e `SDL_Delay` resterebbe in busy-wait. La build usa ASYNCIFY con main loop bloccante: ogni frame finisce in `emscripten_sleep`, scandito a 60 Hz contro `emscripten_get_now`.
+- **La console.** La console di gioco legge stdin con `read(0, ...)`, che in un browser non torna mai e bloccava la scheda; sotto `__EMSCRIPTEN__` viene saltata. Il log finisce invece in `window.__omflog` (`omf-debug.html` lo mostra da solo).
+- **File di lingua.** `ENGLISH.DAT2`/`GERMAN.DAT2` non si possono generare con il `languagetool` wasm (gira durante la build), quindi una copia compilata sull'host li produce e finiscono nel data pack; senza di essi `lang_init()` si interrompe.
+- **File.** I dati del gioco stanno in `/resources/` (il motore risolve `<dir>/resources/<NAME>`), gli shader in `/shaders/`, punteggi e configurazione nella memoria del browser. Il primo caricamento scarica `openomf.js` (239 KB), `openomf.wasm` (~3,1 MB) e `openomf.data` (~15,4 MB), tutti fissati per ETag così che un deploy non lasci mai copie vecchie.
+- **Patch.** Ogni modifica alle sorgenti è una patch in `tools/web/` applicata dallo script di build sul checkout fissato, così la build resta riproducibile.
+
+```bash
+source ~/emsdk/emsdk_env.sh
+tools/web/build_deps.sh      # una volta: enet, libxmp, libconfuse
+tools/web/build_openomf.sh   # clona e fissa OpenOMF, applica le patch, compila, copia in wasm/
+# OMF_EM_DEBUG=1 tools/web/build_openomf.sh   # build con assertion e log
+```
+
+## Come è tornata in vita la versione DOS
 
 1. **Lo schermo nero che non era colpa del gioco.** Nei test headless si vedeva uno schermo nero e milioni di errori CPU di divisione per zero. Il vero colpevole: `fs.readFileSync` di Node restituisce i file piccoli come viste su un pool di memoria condiviso, e l'emulatore copiava l'intero pool sul disco DOS. 40 file su 98 arrivavano come lo stesso blocco da 65.600 byte, quindi `OMF.EXE` eseguiva in realtà i byte di altri file. La soluzione: dare all'emulatore una copia `Uint8Array` propria di ogni file. `probe_fs.js` ora lo controlla prima di ogni test.
 2. **"Please run SETUP.EXE".** Con i file integri il gioco partiva e si chiudeva subito. Il driver SoundBlaster `MDRV004R.MUS` preso dall'installer non conteneva le impostazioni della scheda. Sostituirlo con una copia già configurata (porta 220, IRQ 7, DMA 1) ha risolto.
@@ -87,11 +118,14 @@ Apri **http://127.0.0.1:8734/** e scegli **Regular Game**. Aggiungi `?touch=1` a
 
 | Cosa | A cosa è servito |
 |---|---|
-| [js-dos](https://js-dos.com/) 8.5.3 (emulators 8.5.2) | Il player, la sua cache dei bundle e la CommandInterface: tasti, fotogrammi, screenshot, statistiche dell'emulatore |
-| DOSBox-X, compilato in WebAssembly | Il PC emulato: Gravis Ultrasound, `cycles=max`, uscita nativa 320x200 |
-| WebGL2 | xBR-lv2 di Hyllian ([libretro/glsl-shaders](https://github.com/libretro/glsl-shaders), MIT) e uno shader CRT con scanline e maschera a griglia d'apertura |
+| [OpenOMF](https://github.com/omf2097/openomf), fissato a `4fd5be9` | Il motore di gioco, compilato in WebAssembly: menu, scontri, musica, punteggi |
+| Emscripten (porte SDL2, SDL2_mixer, libpng, zlib) | La toolchain e le sue librerie di sistema |
+| enet, libxmp, libconfuse, compilati come librerie statiche WebAssembly | Sorgenti di rete, musica dei moduli (`.PSM`), file di configurazione |
+| WebGL2 | Il renderer (via una shim GLES3 per libepoxy); xBR-lv2 ([libretro/glsl-shaders](https://github.com/libretro/glsl-shaders), MIT) e uno shader CRT nella pagina DOS |
+| [js-dos](https://js-dos.com/) 8.5.3 (emulators 8.5.2) | La pagina DOS di fallback (`dos.html`): il player, la cache dei bundle e la CommandInterface |
+| DOSBox-X, compilato in WebAssembly | Il PC emulato nella pagina DOS: Gravis Ultrasound, `cycles=max`, uscita nativa 320x200 |
 | GitHub Pages | Hosting, direttamente dalla radice di questo repo |
-| Sorgenti di [OpenOMF](https://github.com/omf2097/openomf) | Il formato di `SETUP.CFG` (`src/formats/setup.h`) e il funzionamento del trucco di Nova (`melee.c`) |
+| Sorgenti di [OpenOMF](https://github.com/omf2097/openomf) lette come riferimento | Il formato di `SETUP.CFG` (`src/formats/setup.h`) e il funzionamento del trucco di Nova (`melee.c`) |
 | [REA](https://github.com/morluto/rea) + Ghidra 12.1.4 | Decompilazione del launcher `OMF.EXE` |
 | Chrome DevTools Protocol, con il `WebSocket` integrato in Node | Test in Chrome headless: tasti, tocchi, screenshot, log di rete, prestazioni |
 | WebDriver BiDi | Le stesse misure in Firefox headless |
@@ -119,7 +153,8 @@ Per rigenerarli: `pip install fonttools brotli`, poi `python3 tools/build_fonts.
 
 ## Come è stato provato
 
-- **GPU vera e niente GPU.** Chrome headless sulla GPU Intel del portatile (`--use-angle=gl`) e con WebGL software (SwiftShader), più Firefox headless via WebDriver BiDi.
+- **La build nativa, screenshot per screenshot.** `cdp_shot.js` avvia la pagina in Chrome headless, clicca **PLAY**, tiene premuto ogni tasto abbastanza a lungo per il menu letto per stato (`SDL_GetKeyboardState` legge lo stato, quindi un tasto premuto e subito rilasciato viene perso) e cattura splash → menu principale → selezione del robot → scontro con HUD, barre della vita e proiettili. A Chrome headless serve `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader` per avere WebGL.
+- **GPU vera e niente GPU (pagina DOS).** Chrome headless sulla GPU Intel del portatile (`--use-angle=gl`) e con WebGL software (SwiftShader), più Firefox headless via WebDriver BiDi.
 - **Dritti all'emulatore.** Uno script aggancia `window.Dos` prima che la pagina si carichi, per arrivare alla CommandInterface di js-dos. Invia tasti all'emulatore, cattura i fotogrammi nativi 320x200 e legge `asyncifyStats()` (cicli per millisecondo) per confrontare la velocità dell'emulatore con e senza filtri.
 - **Un avversario che sta fermo.** Mosse e diagonali sono state verificate in una TWO PLAYER GAME, dove il giocatore 2 non tocca mai un tasto.
 - **Menu che saltano.** I menu del gioco a volte prendono due volte la stessa pressione, quindi gli script leggono dal fotogramma la riga evidenziata (la più luminosa) e correggono il cursore prima di confermare.
@@ -134,7 +169,9 @@ Per rigenerarli: `pip install fonttools brotli`, poi `python3 tools/build_fonts.
 | <img src="screenshots/OK_pillarbox_16-9.png" width="400"><br>`renderAspect: "4/3"`: bande laterali, nessuna distorsione | <img src="screenshots/CONFRONTO_stretch_16-9.png" width="400"><br>`renderAspect: "16/9"`: immagine stirata |
 | <img src="screenshots/OK_fit_no_bars.png" width="400"><br>`renderAspect: "Fit"`: riempie sempre | <img src="screenshots/CONFRONTO_filtri.png" width="400"><br>Filtri dell'immagine: OFF, XBR, CRT |
 
-## Impostazioni di gioco
+## Impostazioni di gioco (pagina DOS)
+
+Impostazioni del gioco emulato su `dos.html`:
 
 | Impostazione | Valore | Dove |
 |---|---|---|
@@ -143,14 +180,18 @@ Per rigenerarli: `pip install fonttools brotli`, poi `python3 tools/build_fonts.
 | CPU emulata | `cycles=max` | `dosbox.conf` e `jsdos.json` nel bundle |
 | Video | Ombre alte, animazioni, animazione della palette e scosse dello schermo attive | Valori predefiniti del gioco, già al massimo |
 | Uscita video | Il vero fotogramma 320x200 del gioco (`scaler=none`, `aspect=false`, `doublescan=false`) | `dosbox.conf` nel bundle |
-| Filtro immagine | xBR su telefono e tablet, spento su desktop (`F9` alterna OFF, XBR, CRT) | `index.html`, WebGL2 |
+| Filtro immagine | xBR su telefono e tablet, spento su desktop (`F9` alterna OFF, XBR, CRT) | `dos.html`, WebGL2 |
 
 ## Cosa c'è nel repo
 
 | Percorso | Cos'è |
 |---|---|
-| `index.html` | La pagina di gioco: launcher, player js-dos, comandi touch, filtri dell'immagine, casella NOVA |
-| `js-dos/` | Player js-dos 8.5 e build WebAssembly di DOSBox-X servita con la pagina |
+| `index.html` | La pagina di gioco: pulsanti PLAY (WASM) e PLAY (DOS), tasti di gioco, hook di stato |
+| `wasm/` | La build nativa servita dalla pagina: `openomf.js`, `openomf.wasm`, `openomf.data` |
+| `tools/web/` | Script di build Web, patch protette (sonda GL, RGBA16F, stdin, cadenza dei frame, opus), shim GLES3, sonda per gli stage |
+| `dos.html` | La pagina di emulazione DOS: launcher js-dos, comandi touch, filtri dell'immagine, casella NOVA (era il vecchio `index.html`) |
+| `omf-debug.html` | Pagina minima solo-log per la build nativa (`window.__omflog`) |
+| `js-dos/` | Player js-dos 8.5 e build WebAssembly di DOSBox-X servita con `dos.html` |
 | `assets/` | Grafica del launcher presa dal gioco (sfondo `NETMEGA.PCX`, logo) |
 | `assets/fonts/` | I tre font bitmap del gioco in TTF e WOFF2, più un'immagine di esempio |
 | `tools/build_fonts.py` | Genera quei font dai file del gioco |
@@ -170,6 +211,11 @@ Per rigenerarli: `pip install fonttools brotli`, poi `python3 tools/build_fonts.
 ```bash
 npm install
 
+# Rigenera la build WebAssembly nativa (una volta: enet, libxmp, libconfuse)
+source ~/emsdk/emsdk_env.sh
+tools/web/build_deps.sh
+tools/web/build_openomf.sh        # OMF_EM_DEBUG=1 per una build con assertion
+
 # L'emulatore vede i file integri?
 node probe_fs.js installed_game
 
@@ -183,9 +229,9 @@ google-chrome-stable --headless=new --remote-debugging-port=9333 --remote-allow-
 node cdp_shot.js "http://127.0.0.1:8734/" 20000 out.png [x,y] [waitAfterClickMs]
 ```
 
-## Opzioni di visualizzazione
+## Opzioni di visualizzazione (pagina DOS)
 
-`index.html` passa queste opzioni a `Dos()` di js-dos v8:
+`dos.html` passa queste opzioni a `Dos()` di js-dos v8:
 
 | Opzione | Valore | Effetto |
 |---|---|---|
