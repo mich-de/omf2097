@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="node_modules/js-dos/dist/js-dos.css">
+<script src="node_modules/js-dos/dist/js-dos.js"></script>
+<style>html,body{margin:0;background:#000;width:100%;height:100%;overflow:hidden} #jsdos{width:100vw;height:100vh}</style>
+</head>
+<body>
+<div id="jsdos"></div>
+<script>
+window.testLog = [];
+const log = m => { window.testLog.push(m); console.log(m); };
+Dos(document.getElementById("jsdos"), {
+    url: "omf2097.jsdos",
+    backend: "dosboxX",
+    autoStart: true,
+    fullScreen: true,
+    kiosk: true,
+    renderAspect: "Fit",
+})
+  .then(ci => { log("READY"); window.ci = ci; })
+  .catch(e => log("ERROR " + e));
+</script>
+</body>
+</html>
